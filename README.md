@@ -1,46 +1,28 @@
 
-# Neural Joint Learning for MD and NER Tasks
+# Neural Tagger for MD and NER
 
-For now, a short description: This is a work-in-progress copy of our joint learner for MD and NER.
-We submit our results in this area to major conferences.
+This repo contains the software that was used to conduct the experiments reported
+in our article titled "Improving Named Entity Recognition by Jointly Learning to 
+Disambiguate Morphological Tags" [1] to be presented at [COLING 2018](http://coling2018.org).
 
-The following is an example command to train a model with training, development and testing datasets in
-CoNLL format. Word embeddings should be in the usual text format.
 
-You can use the `--reload` and `--model_path` options to resume the training.
+# Training and testing
 
-```
-python train.py --pre_emb we-300.txt 
---train dataset/gungor.ner.train.small 
---dev dataset/gungor.ner.dev.small 
---test dataset/gungor.ner.test.small 
---word_dim 300 --word_lstm_dim 200 --word_bidirect 1 
---cap_dim 100 
---crf 1 
---lr_method=adam 
---maximum-epochs 50 
---char_dim 200 --char_lstm_dim 200 --char_bidirect 1 
---overwrite-mappings 1 
---batch-size 1 
-```
+We recommend using the helper scripts for conducting experiments. The scripts named `helper-script-*`
+run the experiments in the paper with given hyper parameters.
 
-# Neural NER Tagger For Morphologically Rich Languages
 
-If you add `--morpho_tag_dim` option, 
+    bash ./scripts/helper-script-to-run-the-experiment-set-small-sizes.sh campaing_name | parallel -j6
 
-```
---morpho_tag_dim 100
-```
-
-this becomes the reference implementation for Gungor et al. (2017) [2] which describes
-a method for incorporating morphological tags which turn out to be important for
-morphologicall rich languages like Turkish, Czech, Finnish, etc.
+For the reporting part to work, you should set up a working [`sacred`](https://github.com/IDSIA/sacred)
+ environment, which is very easy if you choose a filesystem based storage. You can find an
+ example of this in the helper script found in `./scripts/TRUBA` folder.
 
 ## Tag sentences
 
 This project do not have a designated tagger script for now but you can obtain the output in `eval_dir`. 
 You should provide the text in tokenized form in CoNLL format.
-The script will tag both the development and testing files and produce files in `eval_dir`.
+The script will tag both the development and testing files and produce files in `./evaluation/temp/eval_logs/`.
 If you need this and want to contribute by coding and sharing it with the project,
 you are welcome.
 
@@ -59,15 +41,12 @@ docker build -t yourimagename:yourversion .
 
 To run:
 ```bash
-docker run -ti -v `pwd`/docker/dataset:/opt/ner-tagger-dynet/dataset -v `pwd`/docker/models:/opt/ner-tagger-dynet/models ner-tagger-dynet:0.0.11 python train.py --train dataset/gungor.ner.train.small --dev dataset/gungor.ner.dev.small --test dataset/gungor.ner.test.small --word_dim 300 --word_lstm_dim 200 --word_bidirect 1 --cap_dim 100 --crf 1 --lr_method=adam --maximum-epochs 50 --char_dim 200 --char_lstm_dim 200 --char_bidirect 1 --overwrite-mappings 1 --batch-size 1
+docker run -ti -v `pwd`/dataset:/opt/ner-tagger-dynet/dataset -v `pwd`/models:/opt/ner-tagger-dynet/models yourimagename:yourversion python train.py --train dataset/gungor.ner.train.small --dev dataset/gungor.ner.dev.small --test dataset/gungor.ner.test.small --word_dim 300 --word_lstm_dim 200 --word_bidirect 1 --cap_dim 100 --crf 1 --lr_method=adam --maximum-epochs 50 --char_dim 200 --char_lstm_dim 200 --char_bidirect 1 --overwrite-mappings 1 --batch-size 1
 ```
 
-You should create or set permissions accordingly for ``` `pwd`/docker/dataset ``` and ``` `pwd`/docker/models ```.
+You should create or set permissions accordingly for ``` `pwd`/dataset ``` and ``` `pwd`/models ```.
 
 ## References
 
-[1] Lample, G., Ballesteros, M., Subramanian, S., Kawakami, K., & Dyer, C. (2016). Neural Architectures for Named Entity Recognition. In Proceedings of NAACL-HLT (pp. 260-270).
-We borrow several utility functions from [their implementation](https://github.com/glample/tagger).
-
-[2] Morphological Embeddings for Named Entity Recognition in Morphologically Rich Languages
-O Gungor, E Yildiz, S Uskudarli, T Gungor - arXiv preprint arXiv:1706.00506, 2017
+[1] Gungor, O., Uskudarli, S., Gungor, T., Improving Named Entity Recognition by Jointly Learning to 
+Disambiguate Morphological Tags, 2018, COLING 2018, 19-25 August, (to appear).
