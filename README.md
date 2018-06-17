@@ -31,8 +31,6 @@ you are welcome.
 To reproduce the experiments reported with our model, you can use `Docker`
 and build a replica of our experimentation environment.
 
-I will give more details eventually.
-
 To build:
 
 ```bash
