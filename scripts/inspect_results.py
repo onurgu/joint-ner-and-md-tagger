@@ -22,11 +22,25 @@ def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/"):
                 run["info"] = json.load(f)
             with open(os.path.join(run_dir, "config.json"), "r") as f:
                 run["config"] = json.load(f)
-            if run["config"]["experiment_name"] == campaign_name:
+            if campaign_name:
+                if run["config"]["experiment_name"] == campaign_name:
+                    runs.append(run)
+            else:
                 runs.append(run)
         except IOError as e:
             print(e)
     return runs
+
+
+def list_campaigns(db_type):
+    if db_type == "mongo":
+        client = pymongo.MongoClient("localhost", 27017)
+        db = client.joint_ner_and_md
+        campaign_names = db.runs.distinct('config.experiment_name')
+    else:
+        campaign_names = [x["config"]["experiment_name"] for x in find_runs_on_filesystem(None, logs_filepath=db_type)]
+    return campaign_names
+
 
 def report_results_of_a_specific_campaign(campaign_name, db_type):
 
