@@ -3,20 +3,11 @@
 experiment_name=${1:-section1-all-20180311-01}
 original_experiment_name=${experiment_name}
 
-ner_tagger_root=/truba/home/ogungor/projects/research/projects/focus/joint_md_and_ner/ner-tagger-dynet
+configuration_file_path=${3:-./scripts/TRUBA/configuration-variables.sh}
 
-#virtualenvwrapper_path=/usr/local/bin/virtualenvwrapper.sh
-#virtualenv_name=dynet
-virtualenvwrapper_path=/truba/home/ogungor/.local/bin/virtualenvwrapper.sh
-virtualenv_name=joint_ner_dynet
-
-#environment_variables_path=environment-variables
-environment_variables_path='/truba/sw/centos7.3/comp/intel/PS2017-update1/mkl/bin/mklvars.sh intel64'
-
-datasets_root=/truba/home/ogungor/projects/research/datasets/joint_ner_dynet/
-
-#sacred_args='-m localhost:17017:joint_ner_and_md'
-sacred_args='-F /truba/home/ogungor/projects/research/projects/focus/joint_md_and_ner/experiment-logs/'
+if [ -f ${configuration_file_path} ]; then
+    source ${configuration_file_path};
+fi
 
 preamble="cd ${ner_tagger_root} && \
           source ${virtualenvwrapper_path} && \
