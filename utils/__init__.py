@@ -1,17 +1,27 @@
+
+import codecs
+import cPickle
 import optparse
+import os
+import re
 import sys
 from collections import OrderedDict
 
-import codecs
 import numpy as np
-import os
-import re
-
-#import theano
 
 models_path = "./models"
 eval_path = "./evaluation"
 eval_temp = os.path.join(eval_path, "temp")
+# TODO: Move this to a better configurational structure
+eval_logs_dir = os.path.join(eval_temp, "eval_logs")
+
+if not os.path.exists(eval_temp):
+    os.makedirs(eval_temp)
+if not os.path.exists(models_path):
+    os.makedirs(models_path)
+if not os.path.exists(eval_logs_dir):
+    os.makedirs(eval_logs_dir)
+
 eval_script = os.path.join(eval_path, "conlleval")
 
 def lock_file(f):
@@ -33,6 +43,7 @@ def unlock_file(f):
     import fcntl
     fcntl.flock(f, fcntl.LOCK_UN)
 
+
 def create_a_model_subpath(models_path):
     current_model_paths = read_model_paths_database(models_path)
     if len(current_model_paths) > 0:
@@ -41,6 +52,7 @@ def create_a_model_subpath(models_path):
         last_model_path_id_part = -1
 
     return os.path.join(models_path, "model-%08d" % (last_model_path_id_part+1)), (last_model_path_id_part+1)
+
 
 def add_a_model_path_to_the_model_paths_database(models_path, model_subpath, model_params_string):
     f = codecs.open(os.path.join(models_path, "model_paths_database.dat"), "a+")
@@ -250,92 +262,6 @@ def create_input(data, parameters, add_label, singletons=None):
     return input
 
 
-def evaluate(parameters, f_eval, raw_sentences, parsed_sentences,
-             id_to_tag, dictionary_tags, predict_and_exit_filename=""):
-    """
-    Evaluate current model using CoNLL script.
-    """
-    n_tags = len(id_to_tag)
-    predictions = []
-    count = np.zeros((n_tags, n_tags), dtype=np.int32)
-
-    activation_values_dump_files = dict()
-    if predict_and_exit_filename:
-        activation_values_dump_files['char_lstm_for'] =\
-            open(os.path.join("./models/", get_name(parameters), "activation_values_char_lstm_for.dat"), "w")
-
-    for raw_sentence, parsed_sentence in zip(raw_sentences, parsed_sentences):
-        input = create_input(parsed_sentence, parameters, False)
-        eval_result_for_input = f_eval(*input)
-        if parameters['crf']:
-            # y_preds = np.array(eval_result_for_input[0])[1:-1]
-            y_preds = np.array(eval_result_for_input)[1:-1]
-        else:
-            y_preds = eval_result_for_input.argmax(axis=1)
-        y_reals = np.array(parsed_sentence['tags']).astype(np.int32)
-        assert len(y_preds) == len(y_reals)
-        with open("erratic-predictions.txt", "a") as f:
-            if np.any((y_preds >= n_tags) * (y_preds < 0)):
-                f.write(str(y_preds) + "\n")
-                y_preds[(y_preds >= n_tags) * (y_preds < 0)] = 0
-        p_tags = [id_to_tag[y_pred] for y_pred in y_preds]
-        r_tags = [id_to_tag[y_real] for y_real in y_reals]
-        if parameters['t_s'] == 'iobes':
-            p_tags = iobes_iob(p_tags)
-            r_tags = iobes_iob(r_tags)
-        for i, (y_pred, y_real) in enumerate(zip(y_preds, y_reals)):
-            new_line = " ".join(raw_sentence[i][:-1] + [r_tags[i], p_tags[i]])
-            predictions.append(new_line)
-            count[y_real, y_pred] += 1
-        predictions.append("")
-
-    # Write predictions to disk and run CoNLL script externally
-    eval_id = np.random.randint(1000000, 2000000)
-    output_path = os.path.join(eval_temp, "eval.%i.output" % eval_id)
-    scores_path = os.path.join(eval_temp, "eval.%i.scores" % eval_id)
-    with codecs.open(output_path, 'w', 'utf8') as f:
-        f.write("\n".join(predictions))
-    if predict_and_exit_filename:
-        with codecs.open(predict_and_exit_filename, 'w', 'utf8') as f:
-            f.write("\n".join(predictions))
-        os.system("%s < %s > %s" % (eval_script, output_path, predict_and_exit_filename+".scores"))
-        # CoNLL evaluation results
-        eval_lines = [l.rstrip() for l in codecs.open(predict_and_exit_filename+".scores", 'r', 'utf8')]
-        for line in eval_lines:
-            print line
-    else:
-        os.system("%s < %s > %s" % (eval_script, output_path, scores_path))
-
-        # CoNLL evaluation results
-        eval_lines = [l.rstrip() for l in codecs.open(scores_path, 'r', 'utf8')]
-        for line in eval_lines:
-            print line
-
-    # Remove temp files
-    # os.remove(output_path)
-    # os.remove(scores_path)
-
-    # Confusion matrix with accuracy for each tag
-    print ("{: >2}{: >15}{: >7}%s{: >9}" % ("{: >15}" * n_tags)).format(
-        "ID", "NE", "Total",
-        *([id_to_tag[i] for i in xrange(n_tags)] + ["Percent"])
-    )
-    for i in xrange(n_tags):
-        print ("{: >2}{: >15}{: >7}%s{: >9}" % ("{: >15}" * n_tags)).format(
-            str(i), id_to_tag[i], str(count[i].sum()),
-            *([count[i][j] for j in xrange(n_tags)] +
-              ["%.3f" % (count[i][i] * 100. / max(1, count[i].sum()))])
-        )
-
-    # Global accuracy
-    print "%i/%i (%.5f%%)" % (
-        count.trace(), count.sum(), 100. * count.trace() / max(1, count.sum())
-    )
-
-    # F1 on all entities
-    return float(eval_lines[1].strip().split()[-1])
-
-
 def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
     optparser = optparse.OptionParser()
     optparser.add_option(
@@ -485,6 +411,10 @@ def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
         type='str', help="Model path must be given when a reload is requested"
     )
     optparser.add_option(
+        "--model_epoch_path", default="",
+        type='str', help="Model epoch path must be given when a reload is requested"
+    )
+    optparser.add_option(
         "--skip-testing", default="0",
         type='int',
         help="Skip the evaluation on test set (because dev and test sets are the same and thus testing is irrelevant)"
@@ -561,3 +491,38 @@ def form_parameters_dict(opts):
     return parameters
 
 
+def read_parameters_from_file(filepath, opts_filepath):
+
+    with open(filepath, "r") as f:
+        parameters = cPickle.load(f)
+
+    with open(opts_filepath, "r") as f:
+        opts = cPickle.load(f)
+
+    return parameters, opts
+
+
+def read_parameters_from_sys_argv(sys_argv):
+    opts = read_args(args_as_a_list=sys_argv[1:])
+    # Parse parameters
+    parameters = form_parameters_dict(opts)
+
+    # Check parameters validity
+    parameters = check_parameter_validity(opts, parameters)
+
+    return opts, parameters
+
+
+def check_parameter_validity(opts, parameters):
+    assert os.path.isfile(opts.train)
+    assert os.path.isfile(opts.dev)
+    assert os.path.isfile(opts.test)
+    assert parameters['char_dim'] > 0 or parameters['word_dim'] > 0
+    assert 0. <= parameters['dropout'] < 1.0
+    assert parameters['t_s'] in ['iob', 'iobes']
+    assert not parameters['all_emb'] or parameters['pre_emb']
+    assert not parameters['pre_emb'] or parameters['word_dim'] > 0
+    assert not parameters['pre_emb'] or os.path.isfile(parameters['pre_emb'])
+    if parameters['train_with_yuret']:
+        parameters['test_with_yuret'] = 1
+    return parameters

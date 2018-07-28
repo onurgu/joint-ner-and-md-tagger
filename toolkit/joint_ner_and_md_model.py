@@ -3,20 +3,19 @@ import re
 import numpy as np
 
 import dynet
-from dynet import Model, BiRNNBuilder, LSTMBuilder, CoupledLSTMBuilder
+from dynet import Model, BiRNNBuilder, CoupledLSTMBuilder
 
 import codecs
 import cPickle
 
 import logging
 
-from crf import CRF
+from toolkit.crf import CRF
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from utils import get_name, create_a_model_subpath, get_model_subpath, \
-    add_a_model_path_to_the_model_paths_database
+from utils import get_name, create_a_model_subpath, add_a_model_path_to_the_model_paths_database
 
 
 class MainTaggerModel(object):
@@ -24,7 +23,8 @@ class MainTaggerModel(object):
     Network architecture.
     """
 
-    def __init__(self, parameters=None, models_path=None, model_path=None, overwrite_mappings=0):
+    def __init__(self, opts=None, parameters=None, models_path=None, model_path=None, model_epoch_dir_path=None,
+                 overwrite_mappings=0):
         """
         Initialize the model. We either provide the parameters and a path where
         we store the models, or the location of a trained model.
@@ -36,9 +36,10 @@ class MainTaggerModel(object):
         self.model = Model()
 
         if model_path is None:
-            assert parameters and models_path
+            assert parameters and models_path and opts
             # Create a name based on the parameters
             self.parameters = parameters
+            self.opts = opts
             self.name = get_name(parameters)
             # MainTaggerModel location
             # MainTaggerModel location
@@ -51,23 +52,31 @@ class MainTaggerModel(object):
             # self.model_path = model_path
             self.parameters_path = os.path.join(self.model_path, 'parameters.pkl')
             self.mappings_path = os.path.join(self.model_path, 'mappings.pkl')
+            self.opts_path = os.path.join(self.model_path, 'opts.pkl')
             # Create directory for the model if it does not exist
             if not os.path.exists(self.model_path):
                 os.makedirs(self.model_path)
             # Save the parameters to disk
             with open(self.parameters_path, 'wb') as f:
                 cPickle.dump(parameters, f)
+            # Save the command line parameters to disk
+            with open(self.opts_path, 'wb') as f:
+                cPickle.dump(opts, f)
         else:
-            # TODO: handle this part of reloading a saved model..
-            assert parameters is None and models_path is None
+            assert parameters is None and opts is None and models_path and model_path and model_epoch_dir_path
             # MainTaggerModel location
             self.model_path = model_path
             self.parameters_path = os.path.join(model_path, 'parameters.pkl')
             self.mappings_path = os.path.join(model_path, 'mappings.pkl')
+            self.opts_path = os.path.join(model_path, 'opts.pkl')
             # Load the parameters and the mappings from disk
             with open(self.parameters_path, 'rb') as f:
                 self.parameters = cPickle.load(f)
+            # Read opts from the saved file
+            with open(self.opts_path, 'rb') as f:
+                self.opts = cPickle.load(f)
             self.reload_mappings()
+
         self.components = {}
 
     def save_mappings(self, id_to_word, id_to_char, id_to_tag, id_to_morpho_tag):
@@ -116,7 +125,6 @@ class MainTaggerModel(object):
         """
         Write components values to disk.
         """
-        model_dir_path = self.model_path
 
         # for name, param in self.components.items():
         #     param_path = os.path.join(path, "%s.mat" % name)

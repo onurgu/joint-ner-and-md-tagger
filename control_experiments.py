@@ -1,10 +1,10 @@
 from sacred import Experiment
 
-from sacred.observers import MongoObserver
-
 import subprocess
 import sys
 import re
+
+from utils import read_args, form_parameters_dict, get_model_subpath
 
 ex = Experiment('my_experiment')
 
@@ -82,13 +82,11 @@ def my_config():
 @ex.main
 def my_main():
 
-    run_a_single_configuration_without_fabric()
-
-from utils import read_args, form_parameters_dict, get_name, get_model_subpath
+    train_a_single_configuration()
 
 
 @ex.capture
-def run_a_single_configuration_without_fabric(
+def train_a_single_configuration(
                                               datasets_root,
                                               crf,
                                               lr_method,
@@ -127,7 +125,7 @@ m 300  --word_lstm_dim 200 --word_bidirect 1 --cap_dim 100 --crf 1 --lr_method=s
 irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration_mode 2
     """
 
-    execution_part = "python train.py --overwrite-mappings 1 "
+    execution_part = "python main.py --command train --overwrite-mappings 1 "
 
     if sparse_updates_enabled == 0:
         execution_part += "--disable_sparse_updates "
@@ -234,8 +232,12 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
     dummy_prefix = ""
 
-    print dummy_prefix + execution_part + commandline_args
-    process = subprocess.Popen((dummy_prefix + execution_part + commandline_args).split(" "), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    full_commandline = dummy_prefix + execution_part + commandline_args
+
+    print full_commandline
+    process = subprocess.Popen(full_commandline.split(" "),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
 
     def record_metric(epoch, label, value):
         if str(epoch) in _run.info[label]:

@@ -1,7 +1,9 @@
 # coding=utf-8
+import itertools
 import os
 import re
 import codecs
+
 from utils import create_dico, create_mapping, zero_digits
 from utils import iob2, iob_iobes
 
@@ -497,3 +499,194 @@ def calculate_global_maxes(max_sentence_lengths, max_word_lengths):
                 if d[label] > global_max_char_length:
                     global_max_char_length = d[label]
     return global_max_sentence_length, global_max_char_length
+
+
+def prepare_datasets(model, opts, parameters, for_training=True):
+    # Data parameters
+    lower = parameters['lower']
+    zeros = parameters['zeros']
+    tag_scheme = parameters['t_s']
+    max_sentence_lengths = {}
+    max_word_lengths = {}
+
+    # Load sentences
+    if for_training:
+        train_sentences, max_sentence_lengths['train'], max_word_lengths['train'] = load_sentences(opts.train, lower, zeros)
+
+    dev_sentences, max_sentence_lengths['dev'], max_word_lengths['dev'] = load_sentences(opts.dev, lower, zeros)
+    test_sentences, max_sentence_lengths['test'], max_word_lengths['test'] = load_sentences(opts.test, lower, zeros)
+    if parameters['test_with_yuret'] or parameters['train_with_yuret']:
+        # train.merge and test.merge
+        if for_training:
+            yuret_train_sentences, max_sentence_lengths['yuret_train'], max_word_lengths['yuret_train'] = \
+                load_sentences(opts.yuret_train, lower, zeros)
+        yuret_test_sentences, max_sentence_lengths['yuret_test'], max_word_lengths['yuret_test'] = \
+            load_sentences(opts.yuret_test, lower, zeros)
+
+        if for_training:
+            update_tag_scheme(yuret_train_sentences, tag_scheme)
+        update_tag_scheme(yuret_test_sentences, tag_scheme)
+    else:
+        yuret_train_sentences = []
+        yuret_test_sentences = []
+    # Use selected tagging scheme (IOB / IOBES)
+    if for_training:
+        update_tag_scheme(train_sentences, tag_scheme)
+    update_tag_scheme(dev_sentences, tag_scheme)
+    update_tag_scheme(test_sentences, tag_scheme)
+    # Create a dictionary / mapping of words
+    # If we use pretrained embeddings, we add them to the dictionary.
+    if parameters['pre_emb']:
+        if for_training:
+            dico_words_train = word_mapping(train_sentences, lower)[0]
+        dico_words, word_to_id, id_to_word = augment_with_pretrained(
+            dico_words_train.copy(),
+            parameters['pre_emb'],
+            list(itertools.chain.from_iterable(
+                [[w[0] for w in s] for s in dev_sentences + test_sentences])
+            ) if not parameters['all_emb'] else None
+        )
+    else:
+        if for_training:
+            dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower)
+            dico_words_train = dico_words
+
+    sentences_for_mapping = []
+    if for_training:
+        sentences_for_mapping += train_sentences + yuret_train_sentences
+
+    sentences_for_mapping += dev_sentences + test_sentences + yuret_test_sentences
+
+    # Create a dictionary and a mapping for words / POS tags / tags
+    dico_chars, char_to_id, id_to_char = \
+        char_mapping(sentences_for_mapping)
+    dico_tags, tag_to_id, id_to_tag = \
+        tag_mapping(sentences_for_mapping)
+
+    if parameters['mt_d'] > 0:
+        dico_morpho_tags, morpho_tag_to_id, id_to_morpho_tag = \
+            morpho_tag_mapping(
+                sentences_for_mapping,
+                morpho_tag_type=parameters['mt_t'],
+                morpho_tag_column_index=parameters['mt_ci'],
+                joint_learning=True)
+    else:
+        id_to_morpho_tag = {}
+        morpho_tag_to_id = {}
+
+    if opts.overwrite_mappings and for_training:
+        print 'Saving the mappings to disk...'
+        model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
+    model.reload_mappings()
+
+    # Index data
+    if for_training:
+        _, train_stats, train_unique_words, train_data = prepare_dataset(
+            train_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+            lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+        )
+    _, dev_stats, dev_unique_words, dev_data = prepare_dataset(
+        dev_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+        lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+    )
+    _, test_stats, test_unique_words, test_data = prepare_dataset(
+        test_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+        lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+    )
+    if parameters['test_with_yuret'] or parameters['train_with_yuret']:
+        # yuret train and test datasets
+        if for_training:
+            _, yuret_train_stats, yuret_train_unique_words, yuret_train_data = prepare_dataset(
+                yuret_train_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+                lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+            )
+        _, yuret_test_stats, yuret_test_unique_words, yuret_test_data = prepare_dataset(
+            yuret_test_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+            lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+        )
+    else:
+        yuret_train_data = []
+        yuret_test_data = []
+
+    if for_training:
+        print "%i / %i / %i sentences in train / dev / test." % (
+            len(train_stats), len(dev_stats), len(test_stats))
+
+        print "%i / %i / %i words in  dev / test." % (
+            sum([x[0] for x in train_stats]), sum([x[0] for x in dev_stats]), sum([x[0] for x in test_stats]))
+        print "%i / %i / %i longest sentences in  dev / test." % (
+            max([x[0] for x in train_stats]), max([x[0] for x in dev_stats]), max([x[0] for x in test_stats]))
+        print "%i / %i / %i shortest sentences in  dev / test." % (
+            min([x[0] for x in train_stats]), min([x[0] for x in dev_stats]), min([x[0] for x in test_stats]))
+
+        for i, label in [[2, 'char']]:
+            print "%i / %i / %i total %s in train / dev / test." % (
+                sum([sum(x[i]) for x in train_stats]), sum([sum(x[i]) for x in dev_stats]),
+                sum([sum(x[i]) for x in test_stats]),
+                label)
+
+            print "%i / %i / %i max. %s lengths in train / dev / test." % (
+                max([max(x[i]) for x in train_stats]), max([max(x[i]) for x in dev_stats]),
+                max([max(x[i]) for x in test_stats]),
+                label)
+
+            print "%i / %i / %i min. %s lengths in train / dev / test." % (
+                min([min(x[i]) for x in train_stats]), min([min(x[i]) for x in dev_stats]),
+                min([min(x[i]) for x in test_stats]),
+                label)
+    else:
+        print "%i / %i sentences in dev / test." % (
+            len(dev_stats), len(test_stats))
+
+        print "%i / %i words in dev / test." % (
+            sum([x[0] for x in dev_stats]), sum([x[0] for x in test_stats]))
+        print "%i / %i longest sentences in dev / test." % (
+            max([x[0] for x in dev_stats]), max([x[0] for x in test_stats]))
+        print "%i / %i shortest sentences in dev / test." % (
+            min([x[0] for x in dev_stats]), min([x[0] for x in test_stats]))
+
+
+        for i, label in [[2, 'char']]:
+            print "%i / %i total %s in train / dev / test." % (
+                sum([sum(x[i]) for x in dev_stats]),
+                sum([sum(x[i]) for x in test_stats]),
+                label)
+
+            print "%i / %i max. %s lengths in train / dev / test." % (
+                max([max(x[i]) for x in dev_stats]),
+                max([max(x[i]) for x in test_stats]),
+                label)
+
+            print "%i / %i min. %s lengths in train / dev / test." % (
+                min([min(x[i]) for x in dev_stats]),
+                min([min(x[i]) for x in test_stats]),
+                label)
+
+    print "Max. sentence lengths: %s" % max_sentence_lengths
+    print "Max. char lengths: %s" % max_word_lengths
+
+    triple_list = []
+    if for_training:
+        triple_list += [['train', train_stats, train_unique_words]]
+
+    triple_list += [['dev', dev_stats, dev_unique_words], ['test', test_stats, test_unique_words]]
+
+    for label, bucket_stats, n_unique_words in triple_list:
+        int32_items = len(train_stats) * (max_sentence_lengths[label] * (5 + max_word_lengths[label]) + 1)
+        float32_items = n_unique_words * parameters['word_dim']
+        total_size = int32_items + float32_items
+        # TODO: fix this with byte sizes
+        logging.info("Input ids size of the %s dataset is %d" % (label, int32_items))
+        logging.info(
+            "Word embeddings (unique: %d) size of the %s dataset is %d" % (n_unique_words, label, float32_items))
+        logging.info("Total size of the %s dataset is %d" % (label, total_size))
+
+    # # Save the mappings to disk
+    # print 'Saving the mappings to disk...'
+    # model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
+
+    if for_training:
+        return dev_data, dico_words_train, id_to_tag, tag_scheme, test_data, \
+               train_data, train_stats, word_to_id, yuret_test_data, yuret_train_data
+    else:
+        return dev_data, {}, id_to_tag, tag_scheme, test_data, [], {}, word_to_id, yuret_test_data, []
