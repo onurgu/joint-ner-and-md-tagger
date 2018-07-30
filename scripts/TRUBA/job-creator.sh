@@ -12,13 +12,11 @@ max_time=${5:-4-00:00:00}
 sub_job_id=0
 max_jobs_to_submit=100
 
-configuration_file_path=./scripts/TRUBA/configuration-variables.sh
-
 # jobs_line_by_line=`${rundir_path}/helper-script-to-run-the-experiment-set-TRUBA.sh ${experiment_name} ${dim}`
 
 #echo $jobs_line_by_line | while read line; do
 
-${rundir_path}/helper-script-to-run-the-experiment-set-TRUBA.sh ${experiment_name} ${dim} ${configuration_file_path} | while read line; do
+${rundir_path}/helper-script-to-run-the-experiment-set-TRUBA.sh ${experiment_name} ${dim} | while read line; do
 
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id

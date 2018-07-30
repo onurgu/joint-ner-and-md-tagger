@@ -5,7 +5,7 @@ original_experiment_name=${experiment_name}
 
 virtualenvwrapper_path=`which virtualenvwrapper.sh`
 
-configuration_variables_path=${2:-configuration-variables.sh}
+configuration_variables_path=${2:-./scripts/default/configuration-variables.sh}
 
 if [ -f ${configuration_variables_path} ]; then
     source ${configuration_variables_path};
@@ -53,7 +53,7 @@ for trial in `seq 1 ${n_trials}`; do
 		morpho_tag_type=${morpho_tag_type} \
 		word_dim=$dim \
 		word_lstm_dim=$dim \
-		lr_method=sgd-alpha_float@0.01 "
+		lr_method=sgd-learning_rate_float@0.01 "
 
 		# experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-trial-`printf "%02d" ${trial}`
 		experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}
