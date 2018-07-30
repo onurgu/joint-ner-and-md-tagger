@@ -47,7 +47,7 @@ def train(sys_argv):
     print "MainTaggerModel location: %s" % model.model_path
 
     # Prepare the data
-    dev_data, dico_words_train, \
+    dev_data, _, \
     id_to_tag, tag_scheme, test_data, \
     train_data, train_stats, word_to_id, \
     yuret_test_data, yuret_train_data = prepare_datasets(model, opts, parameters)
@@ -56,8 +56,6 @@ def train(sys_argv):
 
     # Build the model
     model.build(**parameters)
-
-    model.saver = DynetSaver(model.model, model.model_path)
 
     ### At this point, the training data is encoded in our format.
 

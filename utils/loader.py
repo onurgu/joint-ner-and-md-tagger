@@ -7,6 +7,8 @@ import codecs
 from utils import create_dico, create_mapping, zero_digits
 from utils import iob2, iob_iobes
 
+from toolkit.joint_ner_and_md_model import MainTaggerModel
+
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -501,7 +503,18 @@ def calculate_global_maxes(max_sentence_lengths, max_word_lengths):
     return global_max_sentence_length, global_max_char_length
 
 
+
+
 def prepare_datasets(model, opts, parameters, for_training=True):
+    """
+
+    :type model: MainTaggerModel
+    :param model: description
+    :param opts:
+    :param parameters:
+    :param for_training:
+    :return:
+    """
     # Data parameters
     lower = parameters['lower']
     zeros = parameters['zeros']
@@ -534,50 +547,70 @@ def prepare_datasets(model, opts, parameters, for_training=True):
         update_tag_scheme(train_sentences, tag_scheme)
     update_tag_scheme(dev_sentences, tag_scheme)
     update_tag_scheme(test_sentences, tag_scheme)
-    # Create a dictionary / mapping of words
-    # If we use pretrained embeddings, we add them to the dictionary.
-    if parameters['pre_emb']:
-        if for_training:
+
+    if for_training:
+        # Create a dictionary / mapping of words
+        # If we use pretrained embeddings, we add them to the dictionary.
+        if parameters['pre_emb']:
             dico_words_train = word_mapping(train_sentences, lower)[0]
-        dico_words, word_to_id, id_to_word = augment_with_pretrained(
-            dico_words_train.copy(),
-            parameters['pre_emb'],
-            list(itertools.chain.from_iterable(
-                [[w[0] for w in s] for s in dev_sentences + test_sentences])
-            ) if not parameters['all_emb'] else None
-        )
-    else:
-        if for_training:
+            dico_words, word_to_id, id_to_word = augment_with_pretrained(
+                dico_words_train.copy(),
+                parameters['pre_emb'],
+                list(itertools.chain.from_iterable(
+                    [[w[0] for w in s] for s in dev_sentences + test_sentences])
+                ) if not parameters['all_emb'] else None
+            )
+        else:
             dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower)
             dico_words_train = dico_words
 
-    sentences_for_mapping = []
-    if for_training:
-        sentences_for_mapping += train_sentences + yuret_train_sentences
+        sentences_for_mapping = []
 
-    sentences_for_mapping += dev_sentences + test_sentences + yuret_test_sentences
+        sentences_for_mapping += train_sentences + yuret_train_sentences + dev_sentences + test_sentences + yuret_test_sentences
 
-    # Create a dictionary and a mapping for words / POS tags / tags
-    dico_chars, char_to_id, id_to_char = \
-        char_mapping(sentences_for_mapping)
-    dico_tags, tag_to_id, id_to_tag = \
-        tag_mapping(sentences_for_mapping)
+        # Create a dictionary and a mapping for words / POS tags / tags
+        dico_chars, char_to_id, id_to_char = \
+            char_mapping(sentences_for_mapping)
+        dico_tags, tag_to_id, id_to_tag = \
+            tag_mapping(sentences_for_mapping)
 
-    if parameters['mt_d'] > 0:
-        dico_morpho_tags, morpho_tag_to_id, id_to_morpho_tag = \
-            morpho_tag_mapping(
-                sentences_for_mapping,
-                morpho_tag_type=parameters['mt_t'],
-                morpho_tag_column_index=parameters['mt_ci'],
-                joint_learning=True)
+        if parameters['mt_d'] > 0:
+            dico_morpho_tags, morpho_tag_to_id, id_to_morpho_tag = \
+                morpho_tag_mapping(
+                    sentences_for_mapping,
+                    morpho_tag_type=parameters['mt_t'],
+                    morpho_tag_column_index=parameters['mt_ci'],
+                    joint_learning=True)
+        else:
+            id_to_morpho_tag = {}
+            morpho_tag_to_id = {}
     else:
-        id_to_morpho_tag = {}
-        morpho_tag_to_id = {}
+        model.reload_mappings()
+
+        # words
+        # dico_words, word_to_id, id_to_word
+        id_to_word = dict(model.id_to_word)
+        word_to_id = {word: word_id for word_id, word in id_to_word.items()}
+        # id_to_word[10000000] = "<UNK>"
+        # word_to_id["<UNK>"] = 10000000
+
+        # chars
+        id_to_char = dict(model.id_to_char)
+        char_to_id = {char: char_id for char_id, char in id_to_char.items()}
+
+        # tags
+        id_to_tag = dict(model.id_to_tag)
+        print id_to_tag
+        tag_to_id = {tag: tag_id for tag_id, tag in id_to_tag.items()}
+        print tag_to_id
+
+        # morpho_tags
+        id_to_morpho_tag = dict(model.id_to_morpho_tag)
+        morpho_tag_to_id = {morpho_tag: morpho_tag_id for morpho_tag_id, morpho_tag in id_to_morpho_tag.items()}
 
     if opts.overwrite_mappings and for_training:
         print 'Saving the mappings to disk...'
         model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
-    model.reload_mappings()
 
     # Index data
     if for_training:
@@ -665,28 +698,28 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     print "Max. sentence lengths: %s" % max_sentence_lengths
     print "Max. char lengths: %s" % max_word_lengths
 
-    triple_list = []
+
     if for_training:
-        triple_list += [['train', train_stats, train_unique_words]]
+        triple_list = [['train', train_stats, train_unique_words],
+                       ['dev', dev_stats, dev_unique_words],
+                       ['test', test_stats, test_unique_words]]
 
-    triple_list += [['dev', dev_stats, dev_unique_words], ['test', test_stats, test_unique_words]]
-
-    for label, bucket_stats, n_unique_words in triple_list:
-        int32_items = len(train_stats) * (max_sentence_lengths[label] * (5 + max_word_lengths[label]) + 1)
-        float32_items = n_unique_words * parameters['word_dim']
-        total_size = int32_items + float32_items
-        # TODO: fix this with byte sizes
-        logging.info("Input ids size of the %s dataset is %d" % (label, int32_items))
-        logging.info(
-            "Word embeddings (unique: %d) size of the %s dataset is %d" % (n_unique_words, label, float32_items))
-        logging.info("Total size of the %s dataset is %d" % (label, total_size))
+        for label, bucket_stats, n_unique_words in triple_list:
+            int32_items = len(train_stats) * (max_sentence_lengths[label] * (5 + max_word_lengths[label]) + 1)
+            float32_items = n_unique_words * parameters['word_dim']
+            total_size = int32_items + float32_items
+            # TODO: fix this with byte sizes
+            logging.info("Input ids size of the %s dataset is %d" % (label, int32_items))
+            logging.info(
+                "Word embeddings (unique: %d) size of the %s dataset is %d" % (n_unique_words, label, float32_items))
+            logging.info("Total size of the %s dataset is %d" % (label, total_size))
 
     # # Save the mappings to disk
     # print 'Saving the mappings to disk...'
     # model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
 
     if for_training:
-        return dev_data, dico_words_train, id_to_tag, tag_scheme, test_data, \
+        return dev_data, {}, id_to_tag, tag_scheme, test_data, \
                train_data, train_stats, word_to_id, yuret_test_data, yuret_train_data
     else:
         return dev_data, {}, id_to_tag, tag_scheme, test_data, [], {}, word_to_id, yuret_test_data, []

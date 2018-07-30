@@ -25,6 +25,7 @@ from utils.loader import prepare_datasets
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("eval")
 
+
 def eval_with_specific_model(model, epoch, buckets_list, integration_mode, active_models,
                              *args): # FLAGS.eval_dir
     # type: (MainTaggerModel, int, list, object, object) -> object
@@ -178,7 +179,9 @@ def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_pat
     batch_size = opts.batch_size
 
     # Build the model
-    model.build(**parameters)
+    model.build(training=False, **parameters)
+
+    model.reload(model_epoch_dir_path)
 
     datasets_to_be_tested = [("dev", dev_data),
                              ("test", test_data)]

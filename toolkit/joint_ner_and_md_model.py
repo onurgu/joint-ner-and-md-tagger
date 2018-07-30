@@ -11,6 +11,7 @@ import cPickle
 import logging
 
 from toolkit.crf import CRF
+from utils.dynetsaver import DynetSaver
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,6 +24,8 @@ class MainTaggerModel(object):
     Network architecture.
     """
 
+    saver = None  # type: DynetSaver
+
     def __init__(self, opts=None, parameters=None, models_path=None, model_path=None, model_epoch_dir_path=None,
                  overwrite_mappings=0):
         """
@@ -30,6 +33,7 @@ class MainTaggerModel(object):
         we store the models, or the location of a trained model.
         """
 
+        self.training = True
         self.n_bests = 0
         self.overwrite_mappings = overwrite_mappings
 
@@ -157,20 +161,19 @@ class MainTaggerModel(object):
             epoch_cost_f.write(str(np.mean(epoch_costs)) + "\n")
             epoch_cost_f.close()
 
-    def reload(self, epoch=-1):
+    def reload(self, model_epoch_dir_path=None):
         """
         Load components values from disk.
         """
         path = self.model_path
-        if epoch != -1:
-            path = os.path.join(path, "epoch-%08d" % epoch)
+        if model_epoch_dir_path:
+            path = model_epoch_dir_path
         else:
-            path = os.path.join(path, "best-model-%08d" % self.n_bests)
-        if not os.path.exists(path):
-            os.makedirs(path)
+            path = os.path.join(path, "epoch-%08d" % 0)
+        print path
+        assert os.path.exists(path)
 
-        self.saver.restore(os.path.join(path, "model.ckpt"),
-                           epoch=epoch, n_bests=self.n_bests)
+        self.saver.restore(os.path.join(path, "model.ckpt"))
 
     def get_last_layer_context_representations(self, sentence,
                                                context_representations_for_ner_loss,
@@ -274,6 +277,8 @@ class MainTaggerModel(object):
         """
         Build the network.
         """
+
+        self.training = training
 
         def _create_get_representation(activation_function=lambda x: x):
             """
@@ -535,6 +540,8 @@ class MainTaggerModel(object):
 
         # self.trainer = dynet.SimpleSGDTrainer(self.model, learning_rate=0.01)
 
+        self.saver = DynetSaver(self.model, self.model_path)
+
         return self
 
     def get_char_representations(self, sentence):
@@ -582,7 +589,7 @@ class MainTaggerModel(object):
     def predict(self, sentence):
 
         context_representations_for_ner_loss, context_representations_for_md_loss = \
-            self.get_context_representations(sentence)
+            self.get_context_representations(sentence, training=False)
 
         last_layer_context_representations, _, _ = \
             self.get_last_layer_context_representations(sentence,
@@ -665,12 +672,16 @@ class MainTaggerModel(object):
                     .get_representation_concat([self.morpho_tag_embeddings[morpho_tag_id] for morpho_tag_id in morpho_tag_sequence])[0]
                 for morpho_tag_sequence in sentence['morpho_tag_ids']]
 
-    def get_combined_word_representations(self, sentence):
+    def get_combined_word_representations(self, sentence, training=None):
         """
         
+        :param training:
         :param sentence: whole sentence with input values as ids
         :return: word representations made up according to the user preferences
         """
+
+        if not training:
+            training = self.training
 
         representations_to_be_zipped = []
         word_embedding_based_representations = \
@@ -694,19 +705,27 @@ class MainTaggerModel(object):
         combined_word_representations = dynet.concatenate_cols(representations_to_be_zipped)
         # print combined_word_representations
         # print self.parameters
-        combined_word_representations = [dynet.dropout(x, p=self.parameters['dropout'])
-                                         for x in combined_word_representations]
+
+        if training:
+            combined_word_representations = [dynet.dropout(x, p=self.parameters['dropout'])
+                                             for x in combined_word_representations]
+        else:
+            combined_word_representations = [x for x in combined_word_representations]
 
         return combined_word_representations
 
-    def get_context_representations(self, sentence):
+    def get_context_representations(self, sentence, training=None):
         """
         
+        :param training:
         :param sentence: whole sentence with input values as ids
         :return: context representations for every layer of RNN (Bi-LSTM in our case)
         """
 
-        combined_word_representations = self.get_combined_word_representations(sentence)
+        if not training:
+            training = self.training
+
+        combined_word_representations = self.get_combined_word_representations(sentence, training=training)
 
         context_representations_for_ner_loss, context_representations_for_md_loss = \
             self.get_sentence_level_bilstm_outputs(combined_word_representations,

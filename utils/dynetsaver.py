@@ -1,5 +1,6 @@
 import os
 
+
 class DynetSaver():
 
     def __init__(self, parameter_collection, checkpoint_dir):
