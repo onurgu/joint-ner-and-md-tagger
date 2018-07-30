@@ -4,11 +4,9 @@ import codecs
 
 import subprocess
 
-import collections
-
 from PyQt4.QtCore import QStringList, QDir, QString
 
-from PyQt4.QtGui import QTreeView, QFileSystemModel, QTableWidgetItem, QListWidgetItem
+from PyQt4.QtGui import QFileSystemModel, QTableWidgetItem, QListWidgetItem
 
 if __name__ == "__main__":
 
