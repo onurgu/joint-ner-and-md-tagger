@@ -680,7 +680,7 @@ class MainTaggerModel(object):
         :return: word representations made up according to the user preferences
         """
 
-        if not training:
+        if training is None:
             training = self.training
 
         representations_to_be_zipped = []
@@ -722,7 +722,7 @@ class MainTaggerModel(object):
         :return: context representations for every layer of RNN (Bi-LSTM in our case)
         """
 
-        if not training:
+        if training is None:
             training = self.training
 
         combined_word_representations = self.get_combined_word_representations(sentence, training=training)

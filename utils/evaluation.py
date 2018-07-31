@@ -26,7 +26,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("eval")
 
 
-def eval_with_specific_model(model, epoch, buckets_list, integration_mode, active_models,
+def eval_with_specific_model(model,
+                             epoch, buckets_list,
+                             integration_mode,
+                             active_models,
+                             return_result,
                              *args): # FLAGS.eval_dir
     # type: (MainTaggerModel, int, list, object, object) -> object
     id_to_tag, batch_size, eval_dir, tag_scheme = args
@@ -147,54 +151,87 @@ def eval_with_specific_model(model, epoch, buckets_list, integration_mode, activ
     if active_models in [0]:
         return f_scores, {}
     else:
-        result = {}
+        disambiguation_accuracies = {}
         for dataset_label in dataset_labels:
             if total_disamb_targets[dataset_label] == 0:
                 total_correct_disambs[dataset_label] = -1
                 total_disamb_targets[dataset_label] = 1
-            result[dataset_label] = \
+            disambiguation_accuracies[dataset_label] = \
                 total_correct_disambs[dataset_label] / float(total_disamb_targets[dataset_label])
 
-        return f_scores, result
+        return f_scores, disambiguation_accuracies
 
 
 def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_path):
 
-    import os
-    from utils import read_parameters_from_file
-
-    parameters, opts = read_parameters_from_file(os.path.join(model_dir_path, "parameters.pkl"),
-                                                 os.path.join(model_dir_path, "opts.pkl"))
-
-    model = MainTaggerModel(models_path=models_dir_path,
-                            model_path=model_dir_path,
-                            model_epoch_dir_path=model_epoch_dir_path)
+    model, opts, parameters = initialize_model_with_pretrained_parameters(model_dir_path,
+                                                                          model_epoch_dir_path,
+                                                                          models_dir_path)
 
     # Prepare the data
     dev_data, dico_words_train, \
     id_to_tag, tag_scheme, test_data, \
     train_data, train_stats, word_to_id, \
-    yuret_test_data, yuret_train_data = prepare_datasets(model, opts, parameters, for_training=False)
+    yuret_test_data, yuret_train_data = prepare_datasets(model,
+                                                         opts,
+                                                         parameters,
+                                                         for_training=False)
+
+    f_scores, morph_accuracies = predict_tags_given_model_and_input(dev_data,
+                                                                    id_to_tag,
+                                                                    model,
+                                                                    opts,
+                                                                    tag_scheme,
+                                                                    test_data,
+                                                                    return_result=False)
+
+    print f_scores
+    print morph_accuracies
+
+
+def predict_sentences_given_model(sentences, model):
+    """
+
+    :type sentences: list
+    :type model: MainTaggerModel
+    """
+    f_scores, morph_accuracies = predict_tags_given_model_and_input(sentences,
+                                       id_to_tag,
+                                        model,
+                                        opts,
+                                        tag_scheme,
+                                        sentences)
+
+
+
+def predict_tags_given_model_and_input(dev_data, id_to_tag, model, opts, tag_scheme, test_data, return_result=False):
 
     batch_size = opts.batch_size
-
-    # Build the model
-    model.build(training=False, **parameters)
-
-    model.reload(model_epoch_dir_path)
-
     datasets_to_be_tested = [("dev", dev_data),
                              ("test", test_data)]
 
     f_scores, morph_accuracies = eval_with_specific_model(model, -1, datasets_to_be_tested,
                                                           model.parameters['integration_mode'],
                                                           model.parameters['active_models'],
+                                                          return_result,
                                                           id_to_tag, batch_size,
                                                           eval_logs_dir,
                                                           tag_scheme)
+    return f_scores, morph_accuracies
 
-    print f_scores
-    print morph_accuracies
+
+def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_path, models_dir_path):
+    import os
+    from utils import read_parameters_from_file
+    parameters, opts = read_parameters_from_file(os.path.join(model_dir_path, "parameters.pkl"),
+                                                 os.path.join(model_dir_path, "opts.pkl"))
+    model = MainTaggerModel(models_path=models_dir_path,
+                            model_path=model_dir_path,
+                            model_epoch_dir_path=model_epoch_dir_path)
+    # Build the model
+    model.build(training=False, **parameters)
+    model.reload(model_epoch_dir_path)
+    return model, opts, parameters
 
 
 def evaluate(sys_argv):

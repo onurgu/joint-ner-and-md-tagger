@@ -55,7 +55,7 @@ def train(sys_argv):
     batch_size = opts.batch_size
 
     # Build the model
-    model.build(**parameters)
+    model.build(training=True, **parameters)
 
     ### At this point, the training data is encoded in our format.
 
@@ -176,6 +176,7 @@ def train(sys_argv):
         f_scores, morph_accuracies = eval_with_specific_model(model, epoch, datasets_to_be_tested,
                                             model.parameters['integration_mode'],
                                             model.parameters['active_models'],
+                                            False,
                                             id_to_tag, batch_size,
                                             eval_logs_dir,
                                             tag_scheme
