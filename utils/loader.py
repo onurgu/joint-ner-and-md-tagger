@@ -503,18 +503,8 @@ def calculate_global_maxes(max_sentence_lengths, max_word_lengths):
     return global_max_sentence_length, global_max_char_length
 
 
+def _prepare_datasets(opts, parameters, for_training=True):
 
-
-def prepare_datasets(model, opts, parameters, for_training=True):
-    """
-
-    :type model: MainTaggerModel
-    :param model: description
-    :param opts:
-    :param parameters:
-    :param for_training:
-    :return:
-    """
     # Data parameters
     lower = parameters['lower']
     zeros = parameters['zeros']
@@ -548,43 +538,74 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     update_tag_scheme(dev_sentences, tag_scheme)
     update_tag_scheme(test_sentences, tag_scheme)
 
-    if for_training:
-        # Create a dictionary / mapping of words
-        # If we use pretrained embeddings, we add them to the dictionary.
-        if parameters['pre_emb']:
-            dico_words_train = word_mapping(train_sentences, lower)[0]
-            dico_words, word_to_id, id_to_word = augment_with_pretrained(
-                dico_words_train.copy(),
-                parameters['pre_emb'],
-                list(itertools.chain.from_iterable(
-                    [[w[0] for w in s] for s in dev_sentences + test_sentences])
-                ) if not parameters['all_emb'] else None
-            )
-        else:
-            dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower)
-            dico_words_train = dico_words
+    # if for_training:
+    #     create_mappings(dev_sentences, lower, parameters, test_sentences, train_sentences, yuret_test_sentences,
+    #                     yuret_train_sentences)
 
-        sentences_for_mapping = []
+    return train_sentences, dev_sentences, test_sentences, yuret_train_sentences, yuret_test_sentences,\
+           max_sentence_lengths, max_word_lengths
 
-        sentences_for_mapping += train_sentences + yuret_train_sentences + dev_sentences + test_sentences + yuret_test_sentences
 
-        # Create a dictionary and a mapping for words / POS tags / tags
-        dico_chars, char_to_id, id_to_char = \
-            char_mapping(sentences_for_mapping)
-        dico_tags, tag_to_id, id_to_tag = \
-            tag_mapping(sentences_for_mapping)
-
-        if parameters['mt_d'] > 0:
-            dico_morpho_tags, morpho_tag_to_id, id_to_morpho_tag = \
-                morpho_tag_mapping(
-                    sentences_for_mapping,
-                    morpho_tag_type=parameters['mt_t'],
-                    morpho_tag_column_index=parameters['mt_ci'],
-                    joint_learning=True)
-        else:
-            id_to_morpho_tag = {}
-            morpho_tag_to_id = {}
+def create_mappings(dev_sentences,
+                    lower, parameters,
+                    test_sentences, train_sentences,
+                    yuret_test_sentences,
+                    yuret_train_sentences):
+    # Create a dictionary / mapping of words
+    # If we use pretrained embeddings, we add them to the dictionary.
+    if parameters['pre_emb']:
+        dico_words_train = word_mapping(train_sentences, lower)[0]
+        dico_words, word_to_id, id_to_word = augment_with_pretrained(
+            dico_words_train.copy(),
+            parameters['pre_emb'],
+            list(itertools.chain.from_iterable(
+                [[w[0] for w in s] for s in dev_sentences + test_sentences])
+            ) if not parameters['all_emb'] else None
+        )
     else:
+        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower)
+        dico_words_train = dico_words
+    sentences_for_mapping = []
+    sentences_for_mapping += train_sentences + yuret_train_sentences + dev_sentences + test_sentences + yuret_test_sentences
+    # Create a dictionary and a mapping for words / POS tags / tags
+    dico_chars, char_to_id, id_to_char = \
+        char_mapping(sentences_for_mapping)
+    dico_tags, tag_to_id, id_to_tag = \
+        tag_mapping(sentences_for_mapping)
+    if parameters['mt_d'] > 0:
+        dico_morpho_tags, morpho_tag_to_id, id_to_morpho_tag = \
+            morpho_tag_mapping(
+                sentences_for_mapping,
+                morpho_tag_type=parameters['mt_t'],
+                morpho_tag_column_index=parameters['mt_ci'],
+                joint_learning=True)
+    else:
+        id_to_morpho_tag = {}
+        morpho_tag_to_id = {}
+
+    return word_to_id, id_to_word,\
+           char_to_id, id_to_char, \
+           tag_to_id, id_to_tag, \
+           morpho_tag_to_id, id_to_morpho_tag
+
+
+def prepare_datasets(model, opts, parameters, for_training=True):
+    """
+
+    :type model: MainTaggerModel
+    :param model: description
+    :param opts:
+    :param parameters:
+    :param for_training:
+    :return:
+    """
+
+    train_sentences, dev_sentences, test_sentences, \
+    yuret_train_sentences, yuret_test_sentences, \
+    max_sentence_lengths, max_word_lengths = \
+        _prepare_datasets(opts, parameters, for_training=for_training)
+
+    if not for_training:
         model.reload_mappings()
 
         # words
@@ -607,6 +628,13 @@ def prepare_datasets(model, opts, parameters, for_training=True):
         # morpho_tags
         id_to_morpho_tag = dict(model.id_to_morpho_tag)
         morpho_tag_to_id = {morpho_tag: morpho_tag_id for morpho_tag_id, morpho_tag in id_to_morpho_tag.items()}
+    else:
+        word_to_id, id_to_word, \
+        char_to_id, id_to_char, \
+        tag_to_id, id_to_tag, \
+        morpho_tag_to_id, id_to_morpho_tag = create_mappings(dev_sentences, parameters['lower'], parameters, test_sentences,
+                                                             train_sentences,
+                                                             yuret_test_sentences, yuret_train_sentences)
 
     if opts.overwrite_mappings and for_training:
         print 'Saving the mappings to disk...'
@@ -616,26 +644,26 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     if for_training:
         _, train_stats, train_unique_words, train_data = prepare_dataset(
             train_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
-            lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+            parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
         )
     _, dev_stats, dev_unique_words, dev_data = prepare_dataset(
         dev_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
-        lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+        parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
     )
     _, test_stats, test_unique_words, test_data = prepare_dataset(
         test_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
-        lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+        parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
     )
     if parameters['test_with_yuret'] or parameters['train_with_yuret']:
         # yuret train and test datasets
         if for_training:
             _, yuret_train_stats, yuret_train_unique_words, yuret_train_data = prepare_dataset(
                 yuret_train_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
-                lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+                parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
             )
         _, yuret_test_stats, yuret_test_unique_words, yuret_test_data = prepare_dataset(
             yuret_test_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
-            lower, parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+            parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
         )
     else:
         yuret_train_data = []
@@ -698,7 +726,6 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     print "Max. sentence lengths: %s" % max_sentence_lengths
     print "Max. char lengths: %s" % max_word_lengths
 
-
     if for_training:
         triple_list = [['train', train_stats, train_unique_words],
                        ['dev', dev_stats, dev_unique_words],
@@ -719,7 +746,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     # model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
 
     if for_training:
-        return dev_data, {}, id_to_tag, tag_scheme, test_data, \
+        return dev_data, {}, id_to_tag, parameters['t_s'], test_data, \
                train_data, train_stats, word_to_id, yuret_test_data, yuret_train_data
     else:
-        return dev_data, {}, id_to_tag, tag_scheme, test_data, [], {}, word_to_id, yuret_test_data, []
+        return dev_data, {}, id_to_tag, parameters['t_s'], test_data, [], {}, word_to_id, yuret_test_data, []

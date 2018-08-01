@@ -52,7 +52,7 @@ for trial in `seq 1 ${n_trials}`; do
 					active_models=${amodels} \
 					integration_mode=$imode \
 					dynet_gpu=0 \
-					embeddings_filepath=\"\" \
+					embeddings_filepath=\""${pretrained_embeddings}"\" \
 					${dataset_filepaths} \
 					$small_sizes \
 					experiment_name=${experiment_name} ;"
@@ -63,7 +63,7 @@ for trial in `seq 1 ${n_trials}`; do
 				integration_mode=0 \
 				use_golden_morpho_analysis_in_word_representation=1 \
 				dynet_gpu=0 \
-				embeddings_filepath=\"\" \
+				embeddings_filepath=\""${pretrained_embeddings}"\" \
 				${dataset_filepaths} \
 				$small_sizes \
 				experiment_name=${experiment_name} ;"
@@ -73,7 +73,7 @@ for trial in `seq 1 ${n_trials}`; do
 				active_models=2 \
 				integration_mode=1 \
 				dynet_gpu=0 \
-				embeddings_filepath=\"\" \
+				embeddings_filepath=\""${pretrained_embeddings}"\" \
 				${dataset_filepaths} \
 				$small_sizes \
 				experiment_name=${experiment_name} ;"
@@ -85,7 +85,7 @@ for trial in `seq 1 ${n_trials}`; do
 				multilayer=1 \
 				shortcut_connections=1 \
 				dynet_gpu=0 \
-				embeddings_filepath=\"\" \
+				embeddings_filepath=\""${pretrained_embeddings}"\" \
 				${dataset_filepaths} \
 				$small_sizes \
 				experiment_name=${experiment_name} ;"
@@ -95,7 +95,7 @@ for trial in `seq 1 ${n_trials}`; do
 				active_models=2 \
 				integration_mode=2 \
 				dynet_gpu=0 \
-				embeddings_filepath=\"\" \
+				embeddings_filepath=\""${pretrained_embeddings}"\" \
 				${dataset_filepaths} \
 				$small_sizes \
 				experiment_name=${experiment_name} ;"

@@ -195,16 +195,20 @@ def predict_sentences_given_model(sentences, model):
     :type sentences: list
     :type model: MainTaggerModel
     """
-    f_scores, morph_accuracies = predict_tags_given_model_and_input(sentences,
+    f_scores, morph_accuracies = predict_tags_given_model_and_input([],
                                        id_to_tag,
                                         model,
                                         opts,
                                         tag_scheme,
-                                        sentences)
+                                        sentences,
+                                                                    return_result=True)
 
 
-
-def predict_tags_given_model_and_input(dev_data, id_to_tag, model, opts, tag_scheme, test_data, return_result=False):
+def predict_tags_given_model_and_input(dev_data,
+                                       id_to_tag,
+                                       model, opts, tag_scheme,
+                                       test_data,
+                                       return_result=False):
 
     batch_size = opts.batch_size
     datasets_to_be_tested = [("dev", dev_data),
