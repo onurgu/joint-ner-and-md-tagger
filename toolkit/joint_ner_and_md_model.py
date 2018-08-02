@@ -23,6 +23,11 @@ class MainTaggerModel(object):
     """
     Network architecture.
     """
+    id_to_word = {} # type: dict
+    id_to_char = {} # type: dict
+    id_to_tag = {}  # type: dict
+    id_to_morpho_tag = {} # type: dict
+
 
     saver = None  # type: DynetSaver
 

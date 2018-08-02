@@ -173,14 +173,11 @@ def train(sys_argv):
         if model.parameters['test_with_yuret']:
             datasets_to_be_tested.append(("yuret", yuret_test_data))
 
-        f_scores, morph_accuracies = eval_with_specific_model(model, epoch, datasets_to_be_tested,
-                                            model.parameters['integration_mode'],
-                                            model.parameters['active_models'],
-                                            False,
-                                            id_to_tag, batch_size,
-                                            eval_logs_dir,
-                                            tag_scheme
-                                            )
+        f_scores, morph_accuracies, _ = eval_with_specific_model(model,
+                                                                 epoch,
+                                                                 datasets_to_be_tested,
+                                                                 return_datasets_with_predicted_labels=False)
+
         if model.parameters['active_models'] in [0, 2, 3]:
             if best_dev < f_scores["dev"]:
                 print("NER Epoch: %d New best dev score => best_dev, best_test: %lf %lf" % (epoch + 1,

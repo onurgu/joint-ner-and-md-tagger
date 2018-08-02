@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 
 
-def load_sentences(path, lower, zeros):
+def load_sentences(input_file_path_or_list, lower, zeros):
     """
     Load sentences. A line must contain at least a word and its tag.
     Sentences are separated by empty lines.
@@ -27,7 +27,12 @@ def load_sentences(path, lower, zeros):
     max_sentence_length = 0
     max_word_length = 0
 
-    for line in codecs.open(path, 'r', 'utf8'):
+    if isinstance(input_file_path_or_list, str):
+        input_f = codecs.open(input_file_path_or_list, 'r', 'utf8')
+    else:
+        input_f = input_file_path_or_list
+
+    for line in input_f:
         line = zero_digits(line.rstrip()) if zeros else line.rstrip()
         if not line:
             if len(sentence) > 0:
@@ -265,8 +270,9 @@ def turkish_lower(s):
     return s.replace(u"IİŞÜĞÖÇ", u"ıişüğöç")
 
 
-def prepare_dataset(sentences, word_to_id, char_to_id, tag_to_id,
-                    morpho_tag_to_id, lower=False,
+def prepare_dataset(sentences,
+                    word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+                    lower=False,
                     morpho_tag_dimension=0,
                     morpho_tag_type='wo_root',
                     morpho_tag_column_index=1):
@@ -608,26 +614,9 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     if not for_training:
         model.reload_mappings()
 
-        # words
-        # dico_words, word_to_id, id_to_word
-        id_to_word = dict(model.id_to_word)
-        word_to_id = {word: word_id for word_id, word in id_to_word.items()}
-        # id_to_word[10000000] = "<UNK>"
-        # word_to_id["<UNK>"] = 10000000
-
-        # chars
-        id_to_char = dict(model.id_to_char)
-        char_to_id = {char: char_id for char_id, char in id_to_char.items()}
-
-        # tags
-        id_to_tag = dict(model.id_to_tag)
-        print id_to_tag
-        tag_to_id = {tag: tag_id for tag_id, tag in id_to_tag.items()}
-        print tag_to_id
-
-        # morpho_tags
-        id_to_morpho_tag = dict(model.id_to_morpho_tag)
-        morpho_tag_to_id = {morpho_tag: morpho_tag_id for morpho_tag_id, morpho_tag in id_to_morpho_tag.items()}
+        char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, \
+        morpho_tag_to_id, tag_to_id, word_to_id =\
+            extract_mapping_dictionaries_from_model(model)
     else:
         word_to_id, id_to_word, \
         char_to_id, id_to_char, \
@@ -646,10 +635,10 @@ def prepare_datasets(model, opts, parameters, for_training=True):
             train_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
             parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
         )
-    _, dev_stats, dev_unique_words, dev_data = prepare_dataset(
-        dev_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
-        parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
-    )
+        _, dev_stats, dev_unique_words, dev_data = prepare_dataset(
+            dev_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+            parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+        )
     _, test_stats, test_unique_words, test_data = prepare_dataset(
         test_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
         parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
@@ -750,3 +739,24 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                train_data, train_stats, word_to_id, yuret_test_data, yuret_train_data
     else:
         return dev_data, {}, id_to_tag, parameters['t_s'], test_data, [], {}, word_to_id, yuret_test_data, []
+
+
+def extract_mapping_dictionaries_from_model(model):
+    # words
+    # dico_words, word_to_id, id_to_word
+    id_to_word = dict(model.id_to_word)
+    word_to_id = {word: word_id for word_id, word in id_to_word.items()}
+    # id_to_word[10000000] = "<UNK>"
+    # word_to_id["<UNK>"] = 10000000
+    # chars
+    id_to_char = dict(model.id_to_char)
+    char_to_id = {char: char_id for char_id, char in id_to_char.items()}
+    # tags
+    id_to_tag = dict(model.id_to_tag)
+    print id_to_tag
+    tag_to_id = {tag: tag_id for tag_id, tag in id_to_tag.items()}
+    print tag_to_id
+    # morpho_tags
+    id_to_morpho_tag = dict(model.id_to_morpho_tag)
+    morpho_tag_to_id = {morpho_tag: morpho_tag_id for morpho_tag_id, morpho_tag in id_to_morpho_tag.items()}
+    return char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, morpho_tag_to_id, tag_to_id, word_to_id

@@ -27,16 +27,21 @@ logger = logging.getLogger("eval")
 
 
 def eval_with_specific_model(model,
-                             epoch, buckets_list,
-                             integration_mode,
-                             active_models,
-                             return_result,
-                             *args): # FLAGS.eval_dir
-    # type: (MainTaggerModel, int, list, object, object) -> object
-    id_to_tag, batch_size, eval_dir, tag_scheme = args
+                             epoch,
+                             datasets_to_be_predicted,
+                             return_datasets_with_predicted_labels=False):
+
+    # type: (MainTaggerModel, int, list, bool) -> object
+    eval_dir = eval_logs_dir
+    batch_size = 1 # model.parameters['batch_size'] TODO: switch back for new models.
+    integration_mode = model.parameters['integration_mode']
+    active_models = model.parameters['active_models']
+    id_to_tag = model.id_to_tag
+    tag_scheme = model.parameters['t_s']
 
     f_scores = {}
-    dataset_labels = ["dev", "test", "yuret"]
+    # dataset_labels = ["dev", "test", "yuret"]
+    dataset_labels = [x[0] for x in datasets_to_be_predicted]
 
     total_correct_disambs = {dataset_label: 0 for dataset_label in dataset_labels}
     total_disamb_targets = {dataset_label: 0 for dataset_label in dataset_labels}
@@ -44,7 +49,9 @@ def eval_with_specific_model(model,
         detailed_correct_disambs = {dataset_label: dd(int) for dataset_label in dataset_labels}
         detailed_total_target_disambs = {dataset_label: dd(int) for dataset_label in dataset_labels}
 
-    for dataset_label, dataset_as_list in buckets_list:
+    datasets_with_predicted_labels = {}
+
+    for dataset_label, dataset_as_list in datasets_to_be_predicted:
 
         if len(dataset_as_list) == 0:
             print "Skipping to evaluate %s dataset as it is empty" % dataset_label
@@ -92,6 +99,7 @@ def eval_with_specific_model(model,
                     for i, (word_id, y_pred, y_real) in enumerate(
                             zip(sentence['word_ids'], decoded_tags,
                                 sentence['tag_ids'])):
+                        print sentence
                         new_line = " ".join([sentence['str_words'][i]] + [r_tags[i], p_tags[i]])
                         predictions.append(new_line)
                         count[y_real, y_pred] += 1
@@ -148,10 +156,14 @@ def eval_with_specific_model(model,
                                        n_possible_analyzes,
                                        detailed_correct_disambs[dataset_label][n_possible_analyzes],
                                        detailed_total_target_disambs[dataset_label][n_possible_analyzes])
+
+        if return_datasets_with_predicted_labels:
+            datasets_with_predicted_labels[dataset_label] = predictions
+
+    disambiguation_accuracies = {}
     if active_models in [0]:
-        return f_scores, {}
+        pass
     else:
-        disambiguation_accuracies = {}
         for dataset_label in dataset_labels:
             if total_disamb_targets[dataset_label] == 0:
                 total_correct_disambs[dataset_label] = -1
@@ -159,7 +171,7 @@ def eval_with_specific_model(model,
             disambiguation_accuracies[dataset_label] = \
                 total_correct_disambs[dataset_label] / float(total_disamb_targets[dataset_label])
 
-        return f_scores, disambiguation_accuracies
+    return f_scores, disambiguation_accuracies, datasets_with_predicted_labels
 
 
 def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_path):
@@ -177,51 +189,79 @@ def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_pat
                                                          parameters,
                                                          for_training=False)
 
-    f_scores, morph_accuracies = predict_tags_given_model_and_input(dev_data,
-                                                                    id_to_tag,
-                                                                    model,
-                                                                    opts,
-                                                                    tag_scheme,
-                                                                    test_data,
-                                                                    return_result=False)
+    datasets_to_be_tested = [("dev", dev_data),
+                             ("test", test_data)]
+
+    f_scores, morph_accuracies, _ = predict_tags_given_model_and_input(datasets_to_be_tested,
+                                                                       model,
+                                                                       return_result=False)
 
     print f_scores
     print morph_accuracies
 
 
-def predict_sentences_given_model(sentences, model):
+def predict_sentences_given_model(sentences_string, model):
     """
 
     :type sentences: list
     :type model: MainTaggerModel
+    :param model:
+        Mappings must be loaded.
     """
-    f_scores, morph_accuracies = predict_tags_given_model_and_input([],
-                                       id_to_tag,
-                                        model,
-                                        opts,
-                                        tag_scheme,
-                                        sentences,
-                                                                    return_result=True)
+
+    from utils import tokenize_sentences_string
+    from utils.loader import load_sentences, prepare_dataset
+
+    tokenized_sentences = tokenize_sentences_string(sentences_string)
+
+    # print tokenized_sentences
+
+    from utils.morph_analyzer_caller import get_morph_analyzes, create_single_word_single_line_format
+
+    # "\n".join([" ".join(x) for x in tokenized_sentences])
+    sentences_data_string = ""
+    for tokenized_sentence in tokenized_sentences:
+        string_output = get_morph_analyzes(" ".join(tokenized_sentence))
+        print string_output
+        sentences_data_string += create_single_word_single_line_format(string_output, conll=True, for_prediction=True)
+
+    # import sys
+    # sys.exit(1)
+
+    print sentences_data_string.split("\n")
+    train_sentences, _, _ = load_sentences(sentences_data_string.split("\n"),
+                                           model.parameters["lower"],
+                                           model.parameters["zeros"])
+
+    from utils.loader import extract_mapping_dictionaries_from_model
+
+    char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, morpho_tag_to_id, tag_to_id, word_to_id = \
+        extract_mapping_dictionaries_from_model(model)
+
+    _, _, _, sentences_data = prepare_dataset(
+        train_sentences,
+        word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
+        model.parameters['lower'],
+        model.parameters['mt_d'], model.parameters['mt_t'], model.parameters['mt_ci'],
+    )
+
+    f_scores, morph_accuracies, labeled_sentences = \
+        predict_tags_given_model_and_input([('input', sentences_data)],
+                                           model,
+                                           return_result=True)
+
+    print(labeled_sentences)
 
 
-def predict_tags_given_model_and_input(dev_data,
-                                       id_to_tag,
-                                       model, opts, tag_scheme,
-                                       test_data,
+def predict_tags_given_model_and_input(datasets_to_be_tested,
+                                       model,
                                        return_result=False):
 
-    batch_size = opts.batch_size
-    datasets_to_be_tested = [("dev", dev_data),
-                             ("test", test_data)]
-
-    f_scores, morph_accuracies = eval_with_specific_model(model, -1, datasets_to_be_tested,
-                                                          model.parameters['integration_mode'],
-                                                          model.parameters['active_models'],
-                                                          return_result,
-                                                          id_to_tag, batch_size,
-                                                          eval_logs_dir,
-                                                          tag_scheme)
-    return f_scores, morph_accuracies
+    f_scores, morph_accuracies, labeled_sentences = eval_with_specific_model(model,
+                                                                             -1,
+                                                                             datasets_to_be_tested,
+                                                                             return_result)
+    return f_scores, morph_accuracies, labeled_sentences
 
 
 def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_path, models_dir_path):
@@ -251,3 +291,24 @@ def evaluate(sys_argv):
         model_dir_path=opts.model_path,
         model_epoch_dir_path=opts.model_epoch_path
     )
+
+
+def predict_from_stdin(sys_argv):
+
+    from utils import read_args
+
+    opts = read_args(args_as_a_list=sys_argv[1:])
+
+    print opts.batch_size
+
+    from utils.train import models_path
+
+    model, opts, parameters = initialize_model_with_pretrained_parameters(opts.model_path,
+                                                                          opts.model_epoch_path,
+                                                                          models_path)
+
+    line = sys.stdin.readline()
+    while line:
+        # "ali ata bak\ndeneme deneme"
+        predict_sentences_given_model(line.decode("utf8"), model)
+        line = sys.stdin.readline()

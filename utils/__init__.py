@@ -24,6 +24,40 @@ if not os.path.exists(eval_logs_dir):
 
 eval_script = os.path.join(eval_path, "conlleval")
 
+
+class RegexpTokenizer():
+
+    pattern = r"\w+|\$[\d\.]+|\S+"
+    flags = re.UNICODE | re.MULTILINE | re.DOTALL
+    # flags = None
+
+    regexp = None
+
+    def __init__(self):
+        self.regexp = re.compile(self.pattern, self.flags)
+
+    def tokenize(self, sentence):
+        return self.regexp.findall(sentence)
+
+
+tokenizer = RegexpTokenizer()
+
+
+def tokenize_sentences_string(sentences_string):
+    """
+
+    :type sentences_string: str
+    """
+
+    tokenized_sentences = []
+
+    sentences_string_lines = sentences_string.split("\n")
+    for sentences_string_line in sentences_string_lines:
+        tokenized_sentences.append(tokenizer.tokenize(sentences_string_line))
+
+    return tokenized_sentences
+
+
 def lock_file(f):
     import fcntl, errno, time
     while True:
@@ -487,6 +521,8 @@ def form_parameters_dict(opts):
     parameters['lr_method'] = opts.lr_method
     parameters['sparse_updates_enabled'] = opts.sparse_updates_enabled
     parameters['use_buckets'] = opts.use_buckets
+
+    parameters['batch_size'] = opts.batch_size
 
     return parameters
 

@@ -2,7 +2,7 @@
 import argparse
 
 from utils.train import train
-from utils.evaluation import evaluate
+from utils.evaluation import evaluate, predict_from_stdin
 
 import sys
 
@@ -12,7 +12,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser("joint ner and md tagger")
 
-    parser.add_argument("--command", default="train", choices=["train", "evaluate", "predict", "webserver"])
+    parser.add_argument("--command", default="train", choices=["train",
+                                                               "evaluate",
+                                                               "predict_stdin",
+                                                               "webserver"])
 
     args = parser.parse_args(backup_sys_argv[1:3])
 
@@ -21,3 +24,5 @@ if __name__ == "__main__":
         train(sys_argv_to_be_transferred)
     elif args.command == "evaluate":
         evaluate(sys_argv_to_be_transferred)
+    elif args.command == "predict_stdin":
+        predict_from_stdin(sys_argv_to_be_transferred)
