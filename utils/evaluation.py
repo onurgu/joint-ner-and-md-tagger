@@ -99,7 +99,6 @@ def eval_with_specific_model(model,
                     for i, (word_id, y_pred, y_real) in enumerate(
                             zip(sentence['word_ids'], decoded_tags,
                                 sentence['tag_ids'])):
-                        print sentence
                         new_line = " ".join([sentence['str_words'][i]] + [r_tags[i], p_tags[i]])
                         predictions.append(new_line)
                         count[y_real, y_pred] += 1
@@ -222,15 +221,14 @@ def predict_sentences_given_model(sentences_string, model):
     sentences_data_string = ""
     for tokenized_sentence in tokenized_sentences:
         string_output = get_morph_analyzes(" ".join(tokenized_sentence))
-        print string_output
+        # print string_output
         sentences_data_string += create_single_word_single_line_format(string_output, conll=True, for_prediction=True)
 
     # import sys
     # sys.exit(1)
 
-    print sentences_data_string.split("\n")
-    train_sentences, _, _ = load_sentences(sentences_data_string.split("\n"),
-                                           model.parameters["lower"],
+    # print sentences_data_string.split("\n")
+    train_sentences, _, _ = load_sentences(sentences_data_string.decode('iso-8859-9').split("\n"),
                                            model.parameters["zeros"])
 
     from utils.loader import extract_mapping_dictionaries_from_model
@@ -251,6 +249,7 @@ def predict_sentences_given_model(sentences_string, model):
                                            return_result=True)
 
     print(labeled_sentences)
+    return labeled_sentences
 
 
 def predict_tags_given_model_and_input(datasets_to_be_tested,
@@ -298,8 +297,6 @@ def predict_from_stdin(sys_argv):
     from utils import read_args
 
     opts = read_args(args_as_a_list=sys_argv[1:])
-
-    print opts.batch_size
 
     from utils.train import models_path
 

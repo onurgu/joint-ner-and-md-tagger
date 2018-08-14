@@ -477,6 +477,10 @@ def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
         "--dynet-gpu", default="1",
         type='int', help="Use gpu or not"
     )
+    optparser.add_option(
+        "--port", default="8888",
+        type='int', help="Webapp port to serve on localhost"
+    )
     if evaluation:
         optparser.add_option(
             "--run-for-all-checkpoints", default="0",

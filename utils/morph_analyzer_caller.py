@@ -61,14 +61,16 @@ def get_morph_analyzes(line, lang="turkish"):
         for token in tokens:
             f.write(token.encode("iso-8859-9") + "\n")
     os.close(fd)
+    print f_path
     with codecs.open(f_path, "r", encoding="iso-8859-9") as f, open(os.devnull, "w") as devnull:
+        # print f.readlines()
         string_output = subprocess.check_output(analyzer_command[lang],
                                                 stdin=f,
                                                 cwd=analyzer_paths[lang],
                                                 stderr=devnull)
 
-    print string_output
-    print type(string_output)
-    print string_output.decode("iso-8859-9")
-    print type(string_output.decode("iso-8859-9"))
+    # print string_output
+    # print type(string_output)
+    # print string_output.decode("iso-8859-9").encode('utf8')
+    # print type(string_output.decode("iso-8859-9"))
     return string_output
