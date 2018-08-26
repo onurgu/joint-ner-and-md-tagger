@@ -13,8 +13,18 @@ analyzer_command = {'turkish': ["./bin/lookup",
                                 "tfeatures.scr"]}
 
 
-def create_single_word_single_line_format(string_output, conll=False, for_prediction=False):
-    lines = string_output.split("\n")
+def create_single_word_single_line_format(morph_analyzer_output_for_a_single_sentence,
+                                          conll=False, for_prediction=False):
+    """
+
+    Transform Oflazer's analyzer's output into single line output format with morphological analyzes
+
+    :param morph_analyzer_output_for_a_single_sentence:
+    :param conll:
+    :param for_prediction:
+    :return:
+    """
+    lines = morph_analyzer_output_for_a_single_sentence.split("\n")
     if not conll:
         result = "<S> <S>+BSTag\n"
     else:
@@ -49,7 +59,7 @@ def get_morph_analyzes(line, lang="turkish"):
     """
 
     :param lang:
-    :param line:
+    :param line: a sentence on a line (untokenized)
     :return:
     """
     if type(line) == unicode:

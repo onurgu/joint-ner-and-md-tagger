@@ -20,7 +20,7 @@ import dynet
 
 from toolkit.joint_ner_and_md_model import MainTaggerModel
 from utils import eval_script, iobes_iob, eval_logs_dir
-from utils.loader import prepare_datasets
+from utils.loader import prepare_datasets, extract_mapping_dictionaries_from_model
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("eval")
@@ -202,7 +202,7 @@ def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_pat
 def predict_sentences_given_model(sentences_string, model):
     """
 
-    :type sentences: list
+    :type sentences_string: string
     :type model: MainTaggerModel
     :param model:
         Mappings must be loaded.
@@ -218,20 +218,24 @@ def predict_sentences_given_model(sentences_string, model):
     from utils.morph_analyzer_caller import get_morph_analyzes, create_single_word_single_line_format
 
     # "\n".join([" ".join(x) for x in tokenized_sentences])
-    sentences_data_string = ""
+    dataset_file_string = ""
+    morph_analyzer_output_for_all_sentences = ""
     for tokenized_sentence in tokenized_sentences:
-        string_output = get_morph_analyzes(" ".join(tokenized_sentence))
+        morph_analyzer_output_for_a_single_sentence = get_morph_analyzes(" ".join(tokenized_sentence))
+        morph_analyzer_output_for_all_sentences += morph_analyzer_output_for_a_single_sentence + "\n"
         # print string_output
-        sentences_data_string += create_single_word_single_line_format(string_output, conll=True, for_prediction=True)
+        dataset_file_string += create_single_word_single_line_format(morph_analyzer_output_for_a_single_sentence,
+                                                                       conll=True,
+                                                                       for_prediction=True)
 
+    dataset_file_string = dataset_file_string.decode('iso-8859-9')
     # import sys
     # sys.exit(1)
 
     # print sentences_data_string.split("\n")
-    train_sentences, _, _ = load_sentences(sentences_data_string.decode('iso-8859-9').split("\n"),
+    # We now have the input sentences in our native format
+    train_sentences, _, _ = load_sentences(dataset_file_string.split("\n"),
                                            model.parameters["zeros"])
-
-    from utils.loader import extract_mapping_dictionaries_from_model
 
     char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, morpho_tag_to_id, tag_to_id, word_to_id = \
         extract_mapping_dictionaries_from_model(model)
@@ -244,12 +248,12 @@ def predict_sentences_given_model(sentences_string, model):
     )
 
     f_scores, morph_accuracies, labeled_sentences = \
-        predict_tags_given_model_and_input([('input', sentences_data)],
+        predict_tags_given_model_and_input([('tagger_output', sentences_data)],
                                            model,
                                            return_result=True)
 
     print(labeled_sentences)
-    return labeled_sentences
+    return labeled_sentences, dataset_file_string
 
 
 def predict_tags_given_model_and_input(datasets_to_be_tested,

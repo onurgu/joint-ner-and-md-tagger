@@ -3,7 +3,7 @@ import argparse
 
 from utils.train import train
 from utils.evaluation import evaluate, predict_from_stdin
-from api.webapp import start_webapp
+from web.api.webapp import start_webapp
 
 import sys
 

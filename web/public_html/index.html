@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neural Turkish Morphological Disambiguation</title>
+
+      <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="css/disambiguate.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container col-md-6">
+
+<div class="row">
+
+<h2>Joint NER and MD Tagger Demo</h2>
+
+    <p> Tokenizer is not working well for this development version. </p>
+
+
+            <textarea id="input_text" class="form-control" rows="3"></textarea>
+
+            <input id="submit_button" class="btn btn-default" type="submit" value="Submit">
+
+            <!-- Table -->
+            <table id="analysis_output_table" class="table table-hover">
+
+
+                <tbody>
+                <tr>
+                    <th>Line no</th>
+                    <th>Surface form</th>
+                    <th>Analysis</th>
+                </tr>
+                </tbody>
+            </table>
+
+    <hr/>
+
+                <table id="tagger_output_table" class="table table-hover">
+
+
+                <tbody>
+                <tr>
+                    <th>Line no</th>
+                    <th>Surface form</th>
+                    <th>Disambiguated Analysis</th>
+                </tr>
+                </tbody>
+            </table>
+</div>
+</div>
+
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="js/jquery-3.2.1.min.js"></script>
+<!-- Include all compiled plugins (below), or include individual files as needed -->
+<script src="js/bootstrap.min.js"></script>
+
+<script src="js/disambiguate.js"></script>
+
+</body>
+</html>

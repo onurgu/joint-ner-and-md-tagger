@@ -51,8 +51,8 @@ def tokenize_sentences_string(sentences_string):
 
     tokenized_sentences = []
 
-    sentences_string_lines = sentences_string.split("\n")
-    for sentences_string_line in sentences_string_lines:
+    sentence_lines = sentences_string.split("\n")
+    for sentences_string_line in sentence_lines:
         tokenized_sentences.append(tokenizer.tokenize(sentences_string_line))
 
     return tokenized_sentences
@@ -470,8 +470,8 @@ def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
         type='int', help="Number of samples in one epoch"
     )
     optparser.add_option(
-        "--use-buckets", action="store_true", default=False,
-        help="whether to use buckets"
+        "--file_format", default="conll", choices=["conll", "conllu"],
+        help="File format of the data files"
     )
     optparser.add_option(
         "--dynet-gpu", default="1",
@@ -524,9 +524,10 @@ def form_parameters_dict(opts):
     parameters['dropout'] = opts.dropout
     parameters['lr_method'] = opts.lr_method
     parameters['sparse_updates_enabled'] = opts.sparse_updates_enabled
-    parameters['use_buckets'] = opts.use_buckets
 
     parameters['batch_size'] = opts.batch_size
+
+    parameters['file_format'] = opts.file_format
 
     return parameters
 

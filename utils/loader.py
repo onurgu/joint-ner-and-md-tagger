@@ -16,11 +16,13 @@ logger = logging.getLogger(__name__)
 import numpy as np
 
 
-def load_sentences(input_file_path_or_list, lower, zeros):
+def load_sentences(input_file_path_or_list, zeros, file_format="conll"):
     """
     Load sentences. A line must contain at least a word and its tag.
     Sentences are separated by empty lines.
     """
+
+    assert file_format in ["conll", "conllu"]
 
     sentences = []
     sentence = []
@@ -31,6 +33,11 @@ def load_sentences(input_file_path_or_list, lower, zeros):
         input_f = codecs.open(input_file_path_or_list, 'r', 'utf8')
     else:
         input_f = input_file_path_or_list
+
+    if file_format == "conllu":
+        sep = '\t'
+    elif file_format == "conll":
+        sep = None
 
     for line in input_f:
         line = zero_digits(line.rstrip()) if zeros else line.rstrip()
@@ -44,8 +51,11 @@ def load_sentences(input_file_path_or_list, lower, zeros):
                         max_sentence_length = len(sentence)
                 sentence = []
         else:
-            tokens = line.split()
-            assert len(tokens) >= 2
+            tokens = line.split(sep)
+            if file_format == "conll":
+                assert len(tokens) >= 2
+            elif file_format == "conllu":
+                assert len(tokens) == 10, "CONLL-U format requires exactly 10 columns"
             sentence.append(tokens)
             if len(tokens[0]) > max_word_length:
                 max_word_length = len(tokens[0])
@@ -413,50 +423,6 @@ def prepare_dataset(sentences,
 
     return buckets, stats, n_unique_words, data
 
-def read_an_example(_bucket_data_dict, batch_idx, batch_size_scalar, n_sentences):
-    given_placeholders = {}
-    # print batch_idx
-    # print batch_size_scalar
-    for key in _bucket_data_dict.keys():
-        if key in ["max_sentence_length", "max_word_length"]:
-            continue
-
-        lower_index = batch_idx * batch_size_scalar
-        upper_index = min((batch_idx + 1) * batch_size_scalar, n_sentences)
-        if key == "str_words":
-            str_words = _bucket_data_dict[key][lower_index:upper_index]
-        else:
-            if _bucket_data_dict[key].ndim > 1:
-                given_placeholders[key] = _bucket_data_dict[key][np.arange(lower_index, upper_index), :]
-            else:
-                # print data[key].shape
-                given_placeholders[key] = _bucket_data_dict[key][np.arange(lower_index, upper_index)]
-
-            # if the size of this slice is smaller than the batch_size_scalar
-            for i in range(batch_size_scalar-(upper_index-lower_index)):
-                if given_placeholders[key].ndim > 1:
-                    row_to_be_duplicated = given_placeholders[key][0, :]
-                    # print "n_sentences: %d" % n_sentences
-                    # print key
-                    # print ret_dict[key].shape
-                    # print row_to_be_duplicated.shape
-                    # print np.expand_dims(row_to_be_duplicated, axis=0).shape
-                    given_placeholders[key] = np.concatenate(
-                        [given_placeholders[key], np.expand_dims(row_to_be_duplicated, axis=0)])
-                else:
-                    row_to_be_duplicated = given_placeholders[key][0]
-                    # print "n_sentences: %d" % n_sentences
-                    # print key
-                    # print ret_dict[key].shape
-                    # print row_to_be_duplicated.shape
-                    # print np.expand_dims(row_to_be_duplicated, axis=0).shape
-                    given_placeholders[key] = np.concatenate([given_placeholders[key], np.expand_dims(row_to_be_duplicated, axis=0)])
-
-    # for key in ret_dict.keys():
-    #     print key
-    #     print ret_dict[key].shape
-
-    return given_placeholders, str_words
 
 def augment_with_pretrained(dictionary, ext_emb_path, words):
     """
@@ -495,20 +461,6 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
     return dictionary, word_to_id, id_to_word
 
 
-def calculate_global_maxes(max_sentence_lengths, max_word_lengths):
-    global_max_sentence_length = 0
-    global_max_char_length = 0
-    for i, d in enumerate([max_sentence_lengths, max_word_lengths]):
-        for label in d.keys():
-            if i == 0:
-                if d[label] > global_max_sentence_length:
-                    global_max_sentence_length = d[label]
-            elif i == 1:
-                if d[label] > global_max_char_length:
-                    global_max_char_length = d[label]
-    return global_max_sentence_length, global_max_char_length
-
-
 def _prepare_datasets(opts, parameters, for_training=True):
 
     # Data parameters
@@ -520,17 +472,20 @@ def _prepare_datasets(opts, parameters, for_training=True):
 
     # Load sentences
     if for_training:
-        train_sentences, max_sentence_lengths['train'], max_word_lengths['train'] = load_sentences(opts.train, lower, zeros)
+        train_sentences, max_sentence_lengths['train'], max_word_lengths['train'] = load_sentences(opts.train, zeros,
+                                                                                                   parameters['file_format'])
 
-    dev_sentences, max_sentence_lengths['dev'], max_word_lengths['dev'] = load_sentences(opts.dev, lower, zeros)
-    test_sentences, max_sentence_lengths['test'], max_word_lengths['test'] = load_sentences(opts.test, lower, zeros)
+    dev_sentences, max_sentence_lengths['dev'], max_word_lengths['dev'] = load_sentences(opts.dev, zeros,
+                                                                                                   parameters['file_format'])
+    test_sentences, max_sentence_lengths['test'], max_word_lengths['test'] = load_sentences(opts.test, zeros,
+                                                                                                   parameters['file_format'])
     if parameters['test_with_yuret'] or parameters['train_with_yuret']:
         # train.merge and test.merge
         if for_training:
             yuret_train_sentences, max_sentence_lengths['yuret_train'], max_word_lengths['yuret_train'] = \
-                load_sentences(opts.yuret_train, lower, zeros)
+                load_sentences(opts.yuret_train, zeros)
         yuret_test_sentences, max_sentence_lengths['yuret_test'], max_word_lengths['yuret_test'] = \
-            load_sentences(opts.yuret_test, lower, zeros)
+            load_sentences(opts.yuret_test, zeros)
 
         if for_training:
             update_tag_scheme(yuret_train_sentences, tag_scheme)
@@ -543,10 +498,6 @@ def _prepare_datasets(opts, parameters, for_training=True):
         update_tag_scheme(train_sentences, tag_scheme)
     update_tag_scheme(dev_sentences, tag_scheme)
     update_tag_scheme(test_sentences, tag_scheme)
-
-    # if for_training:
-    #     create_mappings(dev_sentences, lower, parameters, test_sentences, train_sentences, yuret_test_sentences,
-    #                     yuret_train_sentences)
 
     return train_sentences, dev_sentences, test_sentences, yuret_train_sentences, yuret_test_sentences,\
            max_sentence_lengths, max_word_lengths
@@ -760,3 +711,19 @@ def extract_mapping_dictionaries_from_model(model):
     id_to_morpho_tag = dict(model.id_to_morpho_tag)
     morpho_tag_to_id = {morpho_tag: morpho_tag_id for morpho_tag_id, morpho_tag in id_to_morpho_tag.items()}
     return char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, morpho_tag_to_id, tag_to_id, word_to_id
+
+
+### not used at the moment
+
+def calculate_global_maxes(max_sentence_lengths, max_word_lengths):
+    global_max_sentence_length = 0
+    global_max_char_length = 0
+    for i, d in enumerate([max_sentence_lengths, max_word_lengths]):
+        for label in d.keys():
+            if i == 0:
+                if d[label] > global_max_sentence_length:
+                    global_max_sentence_length = d[label]
+            elif i == 1:
+                if d[label] > global_max_char_length:
+                    global_max_char_length = d[label]
+    return global_max_sentence_length, global_max_char_length

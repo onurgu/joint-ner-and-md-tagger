@@ -29,11 +29,12 @@ class DisambiguationHandler(tornado.web.RequestHandler):
 
         from utils.evaluation import predict_sentences_given_model
 
-        labeled_sentences = predict_sentences_given_model(line, DisambiguationHandler.model)
+        labeled_sentences, dataset_file_string = predict_sentences_given_model(line, DisambiguationHandler.model)
 
 
         return {
-            'analyzer_output': {i: line for i, line in enumerate(labeled_sentences['input']) if len(line) > 0}
+            'dataset_file_string': {i: line.split(" ") for i, line in enumerate(dataset_file_string.split("\n")) if len(line) > 0},
+            'tagger_output': {i: line.split(" ") for i, line in enumerate(labeled_sentences['tagger_output']) if len(line) > 0}
         }
             # 'disambiguator_output': {i: {'surface_form': surface_form, 'analysis': analysis} for i, (surface_form, analysis) in enumerate(prediction_lines_raw)}}
 
@@ -55,7 +56,7 @@ class DisambiguationHandler(tornado.web.RequestHandler):
 def make_app(opts):
     return tornado.web.Application([
         (r"/ner/predict/", DisambiguationHandler, dict(model_path=opts.model_path, model_epoch_path=opts.model_epoch_path)),
-        (r"/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(os.path.curdir, "./public_html/")})
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(os.path.curdir, "./web/public_html/")})
     ])
 
 
