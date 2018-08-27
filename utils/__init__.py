@@ -27,7 +27,7 @@ eval_script = os.path.join(eval_path, "conlleval")
 
 class RegexpTokenizer():
 
-    pattern = r"\w+|\$[\d\.]+|\S+"
+    pattern = r"\w+[']\w+|\w+|\$[\d\.]+|\S+"
     flags = re.UNICODE | re.MULTILINE | re.DOTALL
     # flags = None
 
