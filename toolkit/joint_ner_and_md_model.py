@@ -620,8 +620,13 @@ class MainTaggerModel(object):
         else:
             return decoded_tags
 
-    def get_loss(self, sentences_in_the_batch, gungor_data=True):
+    def get_loss(self, sentences_in_the_batch, loss_configuration_parameters=None):
         # immediate_compute=True, check_validity=True
+        # read configuration
+        if loss_configuration_parameters is None:
+            loss_configuration_parameters = {}
+        gungor_data = loss_configuration_parameters['gungor_data'] if 'gungor_data' in loss_configuration_parameters else True
+
         dynet.renew_cg()
         loss_array = []
         for sentence in sentences_in_the_batch:

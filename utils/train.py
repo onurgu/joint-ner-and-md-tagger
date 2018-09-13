@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import logging
 import random
 import sys
@@ -44,7 +45,7 @@ def train(sys_argv):
                                 parameters=parameters,
                                 models_path=models_path, overwrite_mappings=opts.overwrite_mappings)
 
-    print "MainTaggerModel location: %s" % model.model_path
+    print("MainTaggerModel location: {}".format(model.model_path))
 
     # Prepare the data
     dev_data, _, \
@@ -74,14 +75,6 @@ def train(sys_argv):
 
     model.trainer.set_clip_threshold(5.0)
 
-    def get_loss_for_a_batch(batch_data,
-                             loss_function=partial(model.get_loss, gungor_data=True),
-                             label="G"):
-
-        loss_value = update_loss(batch_data, loss_function)
-
-        return loss_value
-
     def update_loss(sentences_in_the_batch, loss_function):
 
         loss = loss_function(sentences_in_the_batch)
@@ -95,54 +88,31 @@ def train(sys_argv):
     for epoch in range(n_epochs):
         start_time = time.time()
         epoch_costs = []
-        print "Starting epoch %i..." % epoch
+        print("Starting epoch {}...".format(epoch))
 
         count = 0
-        yuret_count = 0
 
-        if opts.use_buckets:
-            pass
-            # permuted_bucket_ids = np.random.permutation(range(len(train_buckets)))
-            #
-            # for bucket_id in list(permuted_bucket_ids):
-            #     bucket_data = train_buckets[bucket_id]
-            #
-            #     print "bucket_id: %d, len(batch_data): %d" % (bucket_id, len(batch_data))
-            #
-            #     shuffled_data = list(bucket_data)
-            #     random.shuffle(shuffled_data)
-            #
-            #     index = 0
-            #     while index < len(shuffled_data):
-            #         batch_data = shuffled_data[index:(index + batch_size)]
-            #         epoch_costs += [get_loss_for_a_batch(batch_data)]
-            #         count += batch_size
-            #         index += batch_size
-            #
-            #         if count % 50 == 0 and count != 0:
-            #             sys.stdout.write("%s%f " % ("G", np.mean(epoch_costs[-50:])))
-            #             sys.stdout.flush()
-            #             if np.mean(epoch_costs[-50:]) > 100:
-            #                 logging.error("BEEP")
-            #     print ""
-        else:
-            shuffled_data = list(train_data)
-            random.shuffle(shuffled_data)
+        loss_configuration_parameters = {'gungor_data': True}
 
-            index = 0
-            while index < len(shuffled_data):
-                batch_data = shuffled_data[index:(index + batch_size)]
-                epoch_costs += [get_loss_for_a_batch(batch_data)]
-                count += batch_size
-                index += batch_size
+        shuffled_data = list(train_data)
+        random.shuffle(shuffled_data)
 
-                if count % 50 == 0 and count != 0:
-                    sys.stdout.write("%s%f " % ("G", np.mean(epoch_costs[-50:])))
-                    sys.stdout.flush()
-                    if np.mean(epoch_costs[-50:]) > 100:
-                        logging.error("BEEP")
+        index = 0
+        while index < len(shuffled_data):
+            batch_data = shuffled_data[index:(index + batch_size)]
+            epoch_costs += [update_loss(batch_data,
+                            loss_function=partial(model.get_loss,
+                                                  loss_configuration_parameters=loss_configuration_parameters))]
+            count += batch_size
+            index += batch_size
 
-        print ""
+            if count % 50 == 0 and count != 0:
+                sys.stdout.write("%s%f " % ("G", np.mean(epoch_costs[-50:])))
+                sys.stdout.flush()
+                if np.mean(epoch_costs[-50:]) > 100:
+                    logging.error("BEEP")
+
+        print("")
 
         if model.parameters["train_with_yuret"]:
             shuffled_data = list(yuret_train_data)
@@ -151,10 +121,9 @@ def train(sys_argv):
             index = 0
             while index < len(shuffled_data):
                 batch_data = shuffled_data[index:(index + batch_size)]
-                epoch_costs += [get_loss_for_a_batch(batch_data,
-                                                    loss_function=partial(model.get_loss,
-                                                                          gungor_data=False),
-                                                    label="Y")]
+                epoch_costs += [update_loss(batch_data,
+                                            loss_function=partial(model.get_loss,
+                                                                  gungor_data=False))]
                 count += batch_size
                 index += batch_size
 
@@ -164,7 +133,7 @@ def train(sys_argv):
                     if np.mean(epoch_costs[-50:]) > 100:
                         logging.error("BEEP")
 
-            print ""
+            print ("")
 
         model.trainer.status()
 
@@ -212,9 +181,10 @@ def train(sys_argv):
                     print("YURET Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf"
                           % (epoch, 0.0, best_morph_yuret))
 
-        print "Epoch %i done. Average cost: %f" % (epoch, np.mean(epoch_costs))
-        print "MainTaggerModel dir: %s" % model.model_path
-        print "Training took %lf seconds for this epoch" % (time.time()-start_time)
+        print("Epoch {} done. Average cost: {}".format(epoch, np.mean(epoch_costs)))
+        print("MainTaggerModel dir: {}".format(model.model_path))
+        print("Training took {} seconds for this epoch".format(time.time()-start_time))
+
 
 if __name__ == "__main__":
     train(sys.argv)

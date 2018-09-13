@@ -129,6 +129,7 @@ def get_name(parameters):
     name = ",".join(["%s=%s" % (k, str(v).replace(',', '')) for k, v in l])
     return "".join(i for i in name if i not in "\/:*?<>|")
 
+
 def create_dico(item_list):
     """
     Create a dictionary of items from a list of list of items.

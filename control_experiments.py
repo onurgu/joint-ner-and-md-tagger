@@ -64,12 +64,14 @@ def my_config():
     # word_lstm_dim = 200
     # cap_dim = 100
 
+    file_format = "conll"
+
     train_filepath = "turkish/gungor.ner.train.only_consistent"
     dev_filepath = "turkish/gungor.ner.dev.only_consistent"
     test_filepath = "turkish/gungor.ner.test.only_consistent"
 
-    yuret_train_filepath = "turkish/train.merge.utf8.gungor_format"
-    yuret_test_filepath = "turkish/test.merge.utf8.gungor_format"
+    yuret_train_filepath = "turkish/train.merge.utf8.conllu"
+    yuret_test_filepath = "turkish/test.merge.utf8.conllu"
 
     train_with_yuret = 0
     test_with_yuret = 1
@@ -102,6 +104,7 @@ def train_a_single_configuration(
                                               word_dim,
                                               word_lstm_dim,
                                               cap_dim, skip_testing, max_epochs,
+                                              file_format,
                                               train_filepath,
                                               dev_filepath,
                                               test_filepath,
@@ -149,25 +152,27 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
     print (train_filepath, dev_filepath, test_filepath, skip_testing, max_epochs)
 
-    always_constant_part = "-T %s/%s " \
-          "-d %s/%s " \
-          "-t %s/%s " \
-          "%s" \
-          "%s" \
-          "--yuret_train %s/%s " \
-          "--yuret_test %s/%s " \
-          "%s" \
-          "--skip-testing %d " \
-          "--tag_scheme iobes " \
-          "--maximum-epochs %d " % (datasets_root, train_filepath,
-                                    datasets_root, dev_filepath,
-                                    datasets_root, test_filepath,
-                                    "--train_with_yuret " if train_with_yuret else "",
-                                    "--test_with_yuret " if test_with_yuret else "",
-                                    datasets_root, yuret_train_filepath,
-                                    datasets_root, yuret_test_filepath,
-                                    embeddings_part,
-                                    skip_testing, max_epochs)
+    always_constant_part = "--file_format %s " \
+                           "-T %s/%s " \
+                           "-d %s/%s " \
+                           "-t %s/%s " \
+                           "%s" \
+                           "%s" \
+                           "--yuret_train %s/%s " \
+                           "--yuret_test %s/%s " \
+                           "%s" \
+                           "--skip-testing %d " \
+                           "--tag_scheme iobes " \
+                           "--maximum-epochs %d " % (file_format,
+                                                     datasets_root, train_filepath,
+                                                     datasets_root, dev_filepath,
+                                                     datasets_root, test_filepath,
+                                                     "--train_with_yuret " if train_with_yuret else "",
+                                                     "--test_with_yuret " if test_with_yuret else "",
+                                                     datasets_root, yuret_train_filepath,
+                                                     datasets_root, yuret_test_filepath,
+                                                     embeddings_part,
+                                                     skip_testing, max_epochs)
 
     commandline_args = always_constant_part + \
               "--crf %d " \

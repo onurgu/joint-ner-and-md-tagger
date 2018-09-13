@@ -13,8 +13,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-import numpy as np
-
 
 def load_sentences(input_file_path_or_list, zeros, file_format="conll"):
     """
@@ -67,13 +65,17 @@ def load_sentences(input_file_path_or_list, zeros, file_format="conll"):
     return sentences, max_sentence_length, max_word_length
 
 
-def update_tag_scheme(sentences, tag_scheme):
+def update_tag_scheme(sentences, tag_scheme, file_format="conll"):
     """
     Check and update sentences tagging scheme to IOB2.
     Only IOB1 and IOB2 schemes are accepted.
     """
     for i, s in enumerate(sentences):
-        tags = [w[-1] for w in s]
+        tags = []
+        if file_format == "conll":
+            tags = [w[-1] for w in s]
+        elif file_format == "conllu":
+            tags = [extract_correct_ner_tag_from_conllu(w) for w in s]
         # Check that tags are given in the IOB format
         if not iob2(tags):
             s_str = '\n'.join(' '.join(w) for w in s)
@@ -83,21 +85,36 @@ def update_tag_scheme(sentences, tag_scheme):
         if tag_scheme == 'iob':
             # If format was IOB1, we convert to IOB2
             for word, new_tag in zip(s, tags):
-                word[-1] = new_tag
+                if file_format == "conll":
+                    word[-1] = new_tag
+                elif file_format == "conllu":
+                    field_contents_dict = load_MISC_column_contents(word[9])
+                    field_contents_dict["NER_TAG"] = [new_tag]
+                    word[9] = compile_MISC_column_contents(field_contents_dict)
         elif tag_scheme == 'iobes':
             new_tags = iob_iobes(tags)
             for word, new_tag in zip(s, new_tags):
-                word[-1] = new_tag
+                if file_format == "conll":
+                    word[-1] = new_tag
+                elif file_format == "conllu":
+                    field_contents_dict = load_MISC_column_contents(word[9])
+                    field_contents_dict["NER_TAG"] = [new_tag]
+                    word[9] = compile_MISC_column_contents(field_contents_dict)
         else:
             raise Exception('Unknown tagging scheme!')
 
 
-def word_mapping(sentences, lower):
+def word_mapping(sentences, lower, file_format="conll"):
     """
     Create a dictionary and a mapping of words, sorted by frequency.
     """
     # words = [[(" ".join(x[0:2])).lower() if lower else " ".join(x[0:2]) for x in s] for s in sentences]
-    words = [[x[0].lower() if lower else x[0] for x in s] for s in sentences]
+    surface_form_index = 0
+    if file_format == "conll":
+        surface_form_index = 0
+    elif file_format == "conllu":
+        surface_form_index = 1
+    words = [[x[surface_form_index].lower() if lower else x[surface_form_index] for x in s] for s in sentences]
     # TODO: only roots version, but this effectively damages char embeddings.
     # words = [[x[1].split("+")[0].lower() if lower else x[1].split("+")[0] for x in s] for s in sentences]
     dico = create_dico(words)
@@ -109,11 +126,18 @@ def word_mapping(sentences, lower):
     return dico, word_to_id, id_to_word
 
 
-def char_mapping(sentences):
+def char_mapping(sentences, file_format="conll"):
     """
     Create a dictionary and mapping of characters, sorted by frequency.
     """
-    chars = ["".join([w[0] + "".join(w[2:-1]) for w in s]) for s in sentences]
+    surface_form_index = 0
+    chars = []
+    if file_format == "conll":
+        surface_form_index = 0
+        chars = ["".join([w[surface_form_index] + "".join(w[2:-1]) for w in s]) for s in sentences]
+    elif file_format == "conllu":
+        surface_form_index = 1
+        chars = ["".join([w[surface_form_index] for w in s]) for s in sentences]
     chars.append("+")
     chars.append("*")
     dico = create_dico(chars)
@@ -122,28 +146,70 @@ def char_mapping(sentences):
     return dico, char_to_id, id_to_char
 
 
-def tag_mapping(sentences):
+def tag_mapping(sentences, file_format="conll"):
     """
     Create a dictionary and a mapping of tags, sorted by frequency.
     """
-    tags = [[word[-1] for word in s] for s in sentences]
+    tags = []
+    if file_format == "conll":
+        tags = [[word[-1] for word in s] for s in sentences]
+    elif file_format == "conllu":
+        tags = [[extract_correct_ner_tag_from_conllu(word) for word in s] for s in sentences]
     dico = create_dico(tags)
     tag_to_id, id_to_tag = create_mapping(dico)
     print "Found %i unique named entity tags" % len(dico)
     return dico, tag_to_id, id_to_tag
 
+
+def load_MISC_column_contents(column):
+    fields_dict = {}
+    fields = column.split("|")
+    for field in fields:
+        tokens = field.split("=")
+        field_name = tokens[0]
+        field_content = [item.replace(">", "=") for item in tokens[1].split("&")]
+        fields_dict[field_name] = field_content
+    return fields_dict
+
+def compile_MISC_column_contents(field_contents_dict):
+    field_contents_str = ""
+    for field_label in field_contents_dict.keys():
+        field_contents_str += field_label + "=" + \
+                              "&".join([item.replace("=", ">") for item in field_contents_dict[field_label]]) \
+                              + "|"
+    field_contents_str = field_contents_str[:-1]
+    return field_contents_str
+
+
 def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_index=1,
-                       joint_learning=False):
+                       joint_learning=False,
+                       file_format="conll"):
     """
     Create a dictionary and a mapping of tags, sorted by frequency.
     """
-    if morpho_tag_type == 'char':
-        morpho_tags = ["".join([w[morpho_tag_column_index] for w in s]) for s in sentences]
-        morpho_tags += [ww for ww in w[2:-1] for w in s for s in sentences]
-    else:
-        morpho_tags = extract_morpho_tags_ordered(morpho_tag_type,
-                                                  sentences, morpho_tag_column_index,
-                                                  joint_learning=joint_learning)
+    if file_format == "conll":
+
+        if morpho_tag_type == 'char':
+            morpho_tags = ["".join([w[morpho_tag_column_index] for w in s]) for s in sentences]
+            morpho_tags += [ww for ww in w[2:-1] for w in s for s in sentences]
+        else:
+            morpho_tags = extract_morpho_tags_ordered(morpho_tag_type,
+                                                      sentences, morpho_tag_column_index,
+                                                      joint_learning=joint_learning)
+
+    elif file_format == "conllu":
+
+        if morpho_tag_type == 'char':
+            # extract CORRECT_ANALYSIS and ALL_ANALYSES fields from column 10
+
+            morpho_tags = ["".join([extract_correct_analysis_from_conllu(w) for w in s]) for s in sentences]
+            morpho_tags += [ww for ww in load_MISC_column_contents(w[9])["ALL_ANALYSES"] for w in s for s in sentences]
+        else:
+            morpho_tags = extract_morpho_tags_ordered(morpho_tag_type,
+                                                      sentences, morpho_tag_column_index,
+                                                      joint_learning=joint_learning)
+
+
         ## TODO: xxx
 
     # print morpho_tags
@@ -173,17 +239,25 @@ def extract_morpho_tags_ordered(morpho_tag_type,
 
 def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags,
                                                   s, morpho_tag_column_index,
-                                                  joint_learning=False):
+                                                  joint_learning=False,
+                                                  file_format="conll"):
     assert morpho_tag_column_index in [1, 2], "We expect to 1 or 2"
+
+    morpho_tag_separator = "+"
+
     for word in s:
-        if joint_learning:
+        if joint_learning: # TODO: not used currently. probably a half-baked idea.
             for morpho_analysis in word[1:-1]:
-                morpho_tags += [morpho_analysis.split("+")[1:]]
+                morpho_tags += [morpho_analysis.split(morpho_tag_separator)[1:]]
         else:
             if morpho_tag_type.startswith('wo_root'):
                 if morpho_tag_type == 'wo_root_after_DB' and morpho_tag_column_index == 1: # this is only applicable to Turkish dataset
                     tmp = []
-                    for tag in word[1].split("+")[1:][::-1]:
+                    if file_format == "conll":
+                        tmp_morpho_tag = word[1]
+                    elif file_format == "conllu":
+                        tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
+                    for tag in tmp_morpho_tag.split(morpho_tag_separator)[1:][::-1]:
                         if tag.endswith("^DB"):
                             tmp += [tag]
                             break
@@ -194,16 +268,28 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags,
                     if morpho_tag_column_index == 2: # this means we're reading Czech dataset (it's faulty in a sense)
                         morpho_tags += [word[morpho_tag_column_index].split("")]
                     else:
-                        morpho_tags += [word[morpho_tag_column_index].split("+")[1:]]
+                        if file_format == "conll":
+                            tmp_morpho_tag = word[morpho_tag_column_index]
+                        elif file_format == "conllu":
+                            tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
+                        morpho_tags += [tmp_morpho_tag.split(morpho_tag_separator)[1:]]
             elif morpho_tag_type.startswith('with_root'):
                 if morpho_tag_column_index == 1:
-                    root = [word[morpho_tag_column_index].split("+")[0]]
+                    if file_format == "conll":
+                        tmp_morpho_tag = word[morpho_tag_column_index]
+                    elif file_format == "conllu":
+                        tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
+                    root = [tmp_morpho_tag.split(morpho_tag_separator)[0]]
                 else:
                     root = [word[1]] # In Czech dataset, the lemma is given in the first column
                 tmp = []
                 tmp += root
                 if morpho_tag_type == 'with_root_after_DB' and morpho_tag_column_index == 1:
-                    for tag in word[morpho_tag_column_index].split("+")[1:][::-1]:
+                    if file_format == "conll":
+                        tmp_morpho_tag = word[1]
+                    elif file_format == "conllu":
+                        tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
+                    for tag in tmp_morpho_tag.split(morpho_tag_separator)[1:][::-1]:
                         if tag.endswith("^DB"):
                             tmp += [tag]
                             break
@@ -214,8 +300,28 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags,
                     if morpho_tag_column_index == 2:
                         morpho_tags += [tmp + word[morpho_tag_column_index].split("")]
                     else: # only 1 is possible
-                        morpho_tags += [word[morpho_tag_column_index].split("+")] # I removed the 'tmp +' because it just repeated the first element which is root
+                        if file_format == "conll":
+                            tmp_morpho_tag = word[1]
+                        elif file_format == "conllu":
+                            tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
+                        morpho_tags += [tmp_morpho_tag.split(morpho_tag_separator)] # I removed the 'tmp +' because it just repeated the first element which is root
     return morpho_tags
+
+
+def extract_specific_single_field_content_from_conllu(word, field_name):
+    return load_MISC_column_contents(word[9])[field_name][0]
+
+
+def extract_correct_analysis_from_conllu(word):
+    return extract_specific_single_field_content_from_conllu(word, "CORRECT_ANALYSIS")
+
+
+def extract_correct_ner_tag_from_conllu(word):
+    return extract_specific_single_field_content_from_conllu(word, "NER_TAG")
+
+
+def extract_all_analyses_from_conllu(word):
+    return load_MISC_column_contents(word[9])["ALL_ANALYSES"]
 
 
 def is_number(s):
@@ -285,7 +391,8 @@ def prepare_dataset(sentences,
                     lower=False,
                     morpho_tag_dimension=0,
                     morpho_tag_type='wo_root',
-                    morpho_tag_column_index=1):
+                    morpho_tag_column_index=1,
+                    file_format="conll"):
     """
     Prepare the dataset. Return a list of lists of dictionaries containing:
         - word indexes
@@ -293,32 +400,58 @@ def prepare_dataset(sentences,
         - tag indexes
     """
 
+    morpho_tag_separator = "+"
+
     def f(x): return x.lower() if lower else x
     data = []
 
     for s in sentences:
-        str_words = [w[0] for w in s]
+        surface_form_index = 0
+        if file_format == "conll":
+            surface_form_index = 0
+        elif file_format == "conllu":
+            surface_form_index = 1
+
+        str_words = [w[surface_form_index] for w in s]
         words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
                  for w in str_words]
         # Skip characters that are not in the training set
         chars = [[char_to_id[c] for c in w if c in char_to_id]
                  for w in str_words]
         caps = [cap_feature(w) for w in str_words]
-        tags = [tag_to_id[w[-1]] for w in s]
+        tags = []
+        if file_format == "conll":
+            tags = [tag_to_id[w[-1]] for w in s]
+        elif file_format == "conllu":
+            tags = [tag_to_id[extract_correct_ner_tag_from_conllu(w)] for w in s]
 
         if morpho_tag_dimension > 0:
-            if morpho_tag_type == 'char':
-                str_morpho_tags = [w[morpho_tag_column_index] for w in s]
-                morpho_tags = [[morpho_tag_to_id[c] for c in str_morpho_tag if c in morpho_tag_to_id]
-                     for str_morpho_tag in str_morpho_tags]
-            else:
-                morpho_tags_in_the_sentence = \
-                    extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [],
-                                                                  s, morpho_tag_column_index,
-                                                                  joint_learning=False)
+            if file_format == "conll":
+                if morpho_tag_type == 'char':
+                    str_morpho_tags = [w[morpho_tag_column_index] for w in s]
+                    morpho_tags = [[morpho_tag_to_id[c] for c in str_morpho_tag if c in morpho_tag_to_id]
+                         for str_morpho_tag in str_morpho_tags]
+                else:
+                    morpho_tags_in_the_sentence = \
+                        extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [],
+                                                                      s, morpho_tag_column_index,
+                                                                      joint_learning=False)
 
-                morpho_tags = [[morpho_tag_to_id[morpho_tag] for morpho_tag in ww if morpho_tag in morpho_tag_to_id]
-                               for ww in morpho_tags_in_the_sentence]
+                    morpho_tags = [[morpho_tag_to_id[morpho_tag] for morpho_tag in ww if morpho_tag in morpho_tag_to_id]
+                                   for ww in morpho_tags_in_the_sentence]
+            elif file_format  == "conllu":
+                if morpho_tag_type == 'char':
+                    str_morpho_tags = [extract_correct_analysis_from_conllu(w) for w in s]
+                    morpho_tags = [[morpho_tag_to_id[c] for c in str_morpho_tag if c in morpho_tag_to_id]
+                                   for str_morpho_tag in str_morpho_tags]
+                else:
+                    morpho_tags_in_the_sentence = \
+                        extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [],
+                                                                      s, morpho_tag_column_index,
+                                                                      joint_learning=False)
+
+                    morpho_tags = [[morpho_tag_to_id[morpho_tag] for morpho_tag in ww if morpho_tag in morpho_tag_to_id]
+                                   for ww in morpho_tags_in_the_sentence]
 
         def f_morpho_tag_to_id(m):
             if m in morpho_tag_to_id:
@@ -326,9 +459,20 @@ def prepare_dataset(sentences,
             else:
                 return morpho_tag_to_id['*UNKNOWN*']
 
+        # All candidate morphological analyses
+
+        all_analyses = []
+        if file_format == "conll":
+            correct_analyses = [w[morpho_tag_column_index] for w in s]
+            all_analyses = [w[2:-1] for w in s]
+        elif file_format == "conllu":
+            correct_analyses = [extract_correct_analysis_from_conllu(w) for w in s]
+            all_analyses = [extract_all_analyses_from_conllu(w) for w in s]
+
         # for now we ignore different schemes we did in previous morph. tag parses.
-        morph_analyzes_tags = [[map(f_morpho_tag_to_id, analysis.split("+")[1:]) if analysis.split("+")[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
-                                for analysis in w[2:-1]] for w in s]
+        morph_analyzes_tags = [[map(f_morpho_tag_to_id, analysis.split(morpho_tag_separator)[1:]) \
+                                    if analysis.split(morpho_tag_separator)[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
+                                for analysis in analyses] for analyses in all_analyses]
 
         def f_char_to_id(c):
             if c in char_to_id:
@@ -336,11 +480,12 @@ def prepare_dataset(sentences,
             else:
                 return char_to_id['*']
 
-        morph_analyzes_roots = [[map(f_char_to_id, list(analysis.split("+")[0])) if list(analysis.split("+")[0]) else [char_to_id["+"]]
-                                for analysis in w[2:-1]] for w in s]
+        morph_analyzes_roots = [[map(f_char_to_id, list(analysis.split(morpho_tag_separator)[0])) \
+                                     if list(analysis.split(morpho_tag_separator)[0]) else [char_to_id[morpho_tag_separator]]
+                                for analysis in analyses] for analyses in all_analyses]
 
-        morph_analysis_from_NER_data = [w[morpho_tag_column_index] for w in s]
-        morph_analyzes_from_FST_unprocessed = [w[2:-1] for w in s]
+        # morph_analysis_from_NER_data = [w[morpho_tag_column_index] for w in s]
+        # morph_analyzes_from_FST_unprocessed = [w[2:-1] for w in s]
 
         def remove_Prop_and_lower(s):
             return turkish_lower(s.replace(u"+Prop", ""))
@@ -350,8 +495,8 @@ def prepare_dataset(sentences,
             found = False
             try:
                 golden_analysis_idx = \
-                    morph_analyzes_from_FST_unprocessed[w_idx]\
-                        .index(morph_analysis_from_NER_data[w_idx])
+                    all_analyses[w_idx]\
+                        .index(correct_analyses[w_idx])
                 found = True
             except ValueError as e:
                 # step 1
@@ -359,19 +504,19 @@ def prepare_dataset(sentences,
             if not found:
                 try:
                     golden_analysis_idx = \
-                        map(remove_Prop_and_lower, morph_analyzes_from_FST_unprocessed[w_idx])\
-                            .index(remove_Prop_and_lower(morph_analysis_from_NER_data[w_idx]))
+                        map(remove_Prop_and_lower, all_analyses[w_idx])\
+                            .index(remove_Prop_and_lower(correct_analyses[w_idx]))
                     found = True
                 except ValueError as e:
                     pass
             if not found:
-                if len(morph_analyzes_from_FST_unprocessed[w_idx]) == 1:
+                if len(all_analyses[w_idx]) == 1:
                     golden_analysis_idx = 0
                 else:
                     # WE expect that this never happens in gungor.ner.14.* files as they have been processed for unfound golden analyses
                     import random
-                    golden_analysis_idx = random.randint(0, len(morph_analyzes_from_FST_unprocessed[w_idx])-1)
-            if golden_analysis_idx >= len(morph_analyzes_from_FST_unprocessed[w_idx]) or \
+                    golden_analysis_idx = random.randint(0, len(all_analyses[w_idx])-1)
+            if golden_analysis_idx >= len(all_analyses[w_idx]) or \
                 golden_analysis_idx < 0 or \
                 golden_analysis_idx >= len(morph_analyzes_roots[w_idx]):
                 logging.error("BEEP at golden analysis idx")
@@ -488,16 +633,16 @@ def _prepare_datasets(opts, parameters, for_training=True):
             load_sentences(opts.yuret_test, zeros)
 
         if for_training:
-            update_tag_scheme(yuret_train_sentences, tag_scheme)
-        update_tag_scheme(yuret_test_sentences, tag_scheme)
+            update_tag_scheme(yuret_train_sentences, tag_scheme, file_format=parameters['file_format'])
+        update_tag_scheme(yuret_test_sentences, tag_scheme, file_format=parameters['file_format'])
     else:
         yuret_train_sentences = []
         yuret_test_sentences = []
     # Use selected tagging scheme (IOB / IOBES)
     if for_training:
-        update_tag_scheme(train_sentences, tag_scheme)
-    update_tag_scheme(dev_sentences, tag_scheme)
-    update_tag_scheme(test_sentences, tag_scheme)
+        update_tag_scheme(train_sentences, tag_scheme, file_format=parameters['file_format'])
+    update_tag_scheme(dev_sentences, tag_scheme, file_format=parameters['file_format'])
+    update_tag_scheme(test_sentences, tag_scheme, file_format=parameters['file_format'])
 
     return train_sentences, dev_sentences, test_sentences, yuret_train_sentences, yuret_test_sentences,\
            max_sentence_lengths, max_word_lengths
@@ -505,13 +650,15 @@ def _prepare_datasets(opts, parameters, for_training=True):
 
 def create_mappings(dev_sentences,
                     lower, parameters,
-                    test_sentences, train_sentences,
+                    test_sentences,
+                    train_sentences,
                     yuret_test_sentences,
-                    yuret_train_sentences):
+                    yuret_train_sentences,
+                    file_format="conll"):
     # Create a dictionary / mapping of words
     # If we use pretrained embeddings, we add them to the dictionary.
     if parameters['pre_emb']:
-        dico_words_train = word_mapping(train_sentences, lower)[0]
+        dico_words_train = word_mapping(train_sentences, lower, file_format=file_format)[0]
         dico_words, word_to_id, id_to_word = augment_with_pretrained(
             dico_words_train.copy(),
             parameters['pre_emb'],
@@ -520,22 +667,24 @@ def create_mappings(dev_sentences,
             ) if not parameters['all_emb'] else None
         )
     else:
-        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower)
+        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower, file_format=file_format)
         dico_words_train = dico_words
     sentences_for_mapping = []
     sentences_for_mapping += train_sentences + yuret_train_sentences + dev_sentences + test_sentences + yuret_test_sentences
     # Create a dictionary and a mapping for words / POS tags / tags
     dico_chars, char_to_id, id_to_char = \
-        char_mapping(sentences_for_mapping)
+        char_mapping(sentences_for_mapping, file_format=file_format)
     dico_tags, tag_to_id, id_to_tag = \
-        tag_mapping(sentences_for_mapping)
+        tag_mapping(sentences_for_mapping, file_format=file_format)
+    # if file_format is conllu, this works for datasets that contain CORRECT_ANALYSIS in 10th column
     if parameters['mt_d'] > 0:
         dico_morpho_tags, morpho_tag_to_id, id_to_morpho_tag = \
             morpho_tag_mapping(
                 sentences_for_mapping,
                 morpho_tag_type=parameters['mt_t'],
                 morpho_tag_column_index=parameters['mt_ci'],
-                joint_learning=True)
+                joint_learning=True,
+                file_format=file_format)
     else:
         id_to_morpho_tag = {}
         morpho_tag_to_id = {}
@@ -574,7 +723,8 @@ def prepare_datasets(model, opts, parameters, for_training=True):
         tag_to_id, id_to_tag, \
         morpho_tag_to_id, id_to_morpho_tag = create_mappings(dev_sentences, parameters['lower'], parameters, test_sentences,
                                                              train_sentences,
-                                                             yuret_test_sentences, yuret_train_sentences)
+                                                             yuret_test_sentences, yuret_train_sentences,
+                                                             file_format=parameters['file_format'])
 
     if opts.overwrite_mappings and for_training:
         print 'Saving the mappings to disk...'
@@ -585,14 +735,17 @@ def prepare_datasets(model, opts, parameters, for_training=True):
         _, train_stats, train_unique_words, train_data = prepare_dataset(
             train_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
             parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+            file_format=parameters['file_format']
         )
         _, dev_stats, dev_unique_words, dev_data = prepare_dataset(
             dev_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
             parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+            file_format=parameters['file_format']
         )
     _, test_stats, test_unique_words, test_data = prepare_dataset(
         test_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
         parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+        file_format=parameters['file_format']
     )
     if parameters['test_with_yuret'] or parameters['train_with_yuret']:
         # yuret train and test datasets
@@ -600,10 +753,12 @@ def prepare_datasets(model, opts, parameters, for_training=True):
             _, yuret_train_stats, yuret_train_unique_words, yuret_train_data = prepare_dataset(
                 yuret_train_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
                 parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+                file_format=parameters['file_format']
             )
         _, yuret_test_stats, yuret_test_unique_words, yuret_test_data = prepare_dataset(
             yuret_test_sentences, word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
             parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
+            file_format=parameters['file_format']
         )
     else:
         yuret_train_data = []
