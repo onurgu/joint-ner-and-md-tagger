@@ -181,9 +181,9 @@ class MainTaggerModel(object):
         self.saver.restore(os.path.join(path, "model.ckpt"))
 
     def get_last_layer_context_representations(self, sentence,
-                                               context_representations_for_ner_loss,
+                                               context_representations_for_crf_loss,
                                                context_representations_for_md_loss):
-        last_layer_context_representations = context_representations_for_ner_loss
+        last_layer_context_representations = context_representations_for_crf_loss
 
         if self.parameters['active_models'] in [1, 2, 3]:
 
@@ -198,11 +198,14 @@ class MainTaggerModel(object):
             selected_morph_analysis_representations = \
                 self.disambiguate_morph_analyzes(morph_analysis_scores)
 
-            md_loss = dynet.esum(
-                [dynet.pickneglogsoftmax(morph_analysis_scores_for_word, golden_idx)
-                 for golden_idx, morph_analysis_scores_for_word in
-                 zip(sentence['golden_morph_analysis_indices'],
-                     morph_analysis_scores)])
+            if 'golden_morph_analysis_indices' in sentence.keys():
+                md_loss = dynet.esum(
+                    [dynet.pickneglogsoftmax(morph_analysis_scores_for_word, golden_idx)
+                     for golden_idx, morph_analysis_scores_for_word in
+                     zip(sentence['golden_morph_analysis_indices'],
+                         morph_analysis_scores)])
+            else:
+                md_loss = dynet.scalarInput(0)
 
             if self.parameters['integration_mode'] == 2:
                 # on the other hand, we can implement two layer of contexts, which we use the
@@ -214,10 +217,7 @@ class MainTaggerModel(object):
                                         [selected_morph_analysis_representation_pos]])
                      for word_pos, (selected_morph_analysis_representation_pos, context) in
                      enumerate(
-                         zip(selected_morph_analysis_representations, context_representations_for_ner_loss))]
-            if self.parameters['active_models'] in [3]:
-                # TODO: is this necessary now?
-                pass
+                         zip(selected_morph_analysis_representations, context_representations_for_crf_loss))]
             if md_loss.value() > 1000:
                 logging.error("BEEP")
         else:
@@ -225,7 +225,7 @@ class MainTaggerModel(object):
             # we must decide whether we should implement the morphological embeddings scheme here.
             md_loss = dynet.scalarInput(0)
             selected_morph_analysis_representations = None
-            last_layer_context_representations = context_representations_for_ner_loss
+            last_layer_context_representations = context_representations_for_crf_loss
 
         assert last_layer_context_representations is not None
         return last_layer_context_representations, md_loss, selected_morph_analysis_representations
@@ -616,16 +616,14 @@ class MainTaggerModel(object):
 
             selected_morph_analysis_representations = \
                 self.disambiguate_morph_analyzes(morph_analysis_scores)
-            return selected_morph_analysis_representations, decoded_tags
         else:
-            return decoded_tags
+            selected_morph_analysis_representations = []
+
+        return selected_morph_analysis_representations, decoded_tags
 
     def get_loss(self, sentences_in_the_batch, loss_configuration_parameters=None):
         # immediate_compute=True, check_validity=True
         # read configuration
-        if loss_configuration_parameters is None:
-            loss_configuration_parameters = {}
-        gungor_data = loss_configuration_parameters['gungor_data'] if 'gungor_data' in loss_configuration_parameters else True
 
         dynet.renew_cg()
         loss_array = []
@@ -647,6 +645,13 @@ class MainTaggerModel(object):
             })
             """
 
+            """
+                Our new approach will pick the appropriate model design according to the available labels.
+                For example, if a sample contains only golden NER tags, only crf_loss will be added to the list of loss
+                expressions to be updated. It is similar for other cases where only golden MD tags are available or when
+                both are available. The latter one is only possible for Turkish.
+            """
+
             context_representations_for_ner_loss, context_representations_for_md_loss = \
                 self.get_context_representations(sentence)
 
@@ -654,10 +659,13 @@ class MainTaggerModel(object):
                 self.get_last_layer_context_representations(sentence,
                                                             context_representations_for_ner_loss,
                                                             context_representations_for_md_loss)
-            if gungor_data and self.parameters['active_models'] in [0, 2, 3]: # 0: NER, 1: MD, 2: JOINT, 3: JOINT_MULTILAYER
+            if self.parameters['active_models'] in [0, 2, 3]: # 0: NER, 1: MD, 2: JOINT, 3: JOINT_MULTILAYER
                 tag_scores = self.calculate_tag_scores(last_layer_context_representations)
 
-                crf_loss = self.crf_module.neg_log_loss(tag_scores, sentence['tag_ids'])
+                if len(sentence['tag_ids']) > 0:
+                    crf_loss = self.crf_module.neg_log_loss(tag_scores, sentence['tag_ids'])
+                else:
+                    crf_loss = dynet.scalarInput(0)
 
                 if crf_loss.value() > 1000:
                     logging.error("BEEP")

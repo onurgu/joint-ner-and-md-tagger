@@ -48,10 +48,12 @@ def train(sys_argv):
     print("MainTaggerModel location: {}".format(model.model_path))
 
     # Prepare the data
-    dev_data, _, \
-    id_to_tag, tag_scheme, test_data, \
-    train_data, train_stats, word_to_id, \
-    yuret_test_data, yuret_train_data = prepare_datasets(model, opts, parameters)
+    # dev_data, _, \
+    # id_to_tag, tag_scheme, test_data, \
+    # train_data, train_stats, word_to_id, \
+    # yuret_test_data, yuret_train_data = prepare_datasets(model, opts, parameters)
+
+    data_dict, id_to_tag, word_to_id, stats_dict = prepare_datasets(model, opts, parameters)
 
     batch_size = opts.batch_size
 
@@ -85,14 +87,19 @@ def train(sys_argv):
 
         return loss.value()
 
-    for epoch in range(n_epochs):
+    for epoch_no in range(n_epochs):
         start_time = time.time()
         epoch_costs = []
-        print("Starting epoch {}...".format(epoch))
+        print("Starting epoch {}...".format(epoch_no))
 
-        count = 0
+        n_samples_trained = 0
 
-        loss_configuration_parameters = {'gungor_data': True}
+        loss_configuration_parameters = {}
+
+        train_data = []
+        for label in ["ner", "md"]:
+            for purpose in ["train"]:
+                train_data += data_dict[label][purpose]
 
         shuffled_data = list(train_data)
         random.shuffle(shuffled_data)
@@ -103,10 +110,10 @@ def train(sys_argv):
             epoch_costs += [update_loss(batch_data,
                             loss_function=partial(model.get_loss,
                                                   loss_configuration_parameters=loss_configuration_parameters))]
-            count += batch_size
+            n_samples_trained += batch_size
             index += batch_size
 
-            if count % 50 == 0 and count != 0:
+            if n_samples_trained % 50 == 0 and n_samples_trained != 0:
                 sys.stdout.write("%s%f " % ("G", np.mean(epoch_costs[-50:])))
                 sys.stdout.flush()
                 if np.mean(epoch_costs[-50:]) > 100:
@@ -114,74 +121,45 @@ def train(sys_argv):
 
         print("")
 
-        if model.parameters["train_with_yuret"]:
-            shuffled_data = list(yuret_train_data)
-            random.shuffle(shuffled_data)
-
-            index = 0
-            while index < len(shuffled_data):
-                batch_data = shuffled_data[index:(index + batch_size)]
-                epoch_costs += [update_loss(batch_data,
-                                            loss_function=partial(model.get_loss,
-                                                                  gungor_data=False))]
-                count += batch_size
-                index += batch_size
-
-                if count % 50 == 0 and count != 0:
-                    sys.stdout.write("%s%f " % ("Y", np.mean(epoch_costs[-50:])))
-                    sys.stdout.flush()
-                    if np.mean(epoch_costs[-50:]) > 100:
-                        logging.error("BEEP")
-
-            print ("")
-
         model.trainer.status()
 
-        datasets_to_be_tested = [("dev", dev_data),
-                                ("test", test_data)]
-        if model.parameters['test_with_yuret']:
-            datasets_to_be_tested.append(("yuret", yuret_test_data))
+        datasets_to_be_tested = {"ner": {"dev": data_dict["ner"]["dev"], "test": data_dict["ner"]["test"]},
+                                 "md": {"dev": data_dict["md"]["dev"], "test": data_dict["md"]["test"]}}
 
         f_scores, morph_accuracies, _ = eval_with_specific_model(model,
-                                                                 epoch,
+                                                                 epoch_no,
                                                                  datasets_to_be_tested,
                                                                  return_datasets_with_predicted_labels=False)
 
         if model.parameters['active_models'] in [0, 2, 3]:
-            if best_dev < f_scores["dev"]:
-                print("NER Epoch: %d New best dev score => best_dev, best_test: %lf %lf" % (epoch + 1,
-                                                                                                   f_scores["dev"],
-                                                                                                   f_scores["test"]))
-                best_dev = f_scores["dev"]
-                best_test = f_scores["test"]
-                model.save(epoch)
-                model.save_best_performances_and_costs(epoch,
-                                                       best_performances=[f_scores["dev"], f_scores["test"]],
-                                                       epoch_costs=epoch_costs)
-            else:
-                print("NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf" % (epoch + 1,
+            if "dev" in f_scores["ner"]:
+                if best_dev < f_scores["ner"]["dev"]:
+                    print("NER Epoch: %d New best dev score => best_dev, best_test: %lf %lf" % (epoch_no + 1,
+                                                                                                       f_scores["ner"]["dev"],
+                                                                                                       f_scores["ner"]["test"]))
+                    best_dev = f_scores["ner"]["dev"]
+                    best_test = f_scores["ner"]["test"]
+                    model.save(epoch_no)
+                    model.save_best_performances_and_costs(epoch_no,
+                                                           best_performances=[f_scores["ner"]["dev"], f_scores["ner"]["test"]],
+                                                           epoch_costs=epoch_costs)
+                else:
+                    print("NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf" % (epoch_no + 1,
                                                                                                            best_dev,
                                                                                                            best_test))
 
         if model.parameters['active_models'] in [1, 2, 3]:
-            if best_morph_dev < morph_accuracies["dev"]:
-                print("MORPH Epoch: %d New best dev score => best_dev, best_test: %lf %lf" %
-                      (epoch, morph_accuracies["dev"], morph_accuracies["test"]))
-                best_morph_dev = morph_accuracies["dev"]
-                best_morph_test = morph_accuracies["test"]
-                if parameters['test_with_yuret']:
-                    best_morph_yuret = morph_accuracies["yuret"]
-                    print("YURET Epoch: %d New best dev score => best_dev, best_test: %lf %lf" %
-                          (epoch, 0.0, morph_accuracies["yuret"]))
-                    # we do not save in this case, just reporting
-            else:
-                print("MORPH Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf"
-                      % (epoch, best_morph_dev, best_morph_test))
-                if parameters['test_with_yuret']:
-                    print("YURET Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf"
-                          % (epoch, 0.0, best_morph_yuret))
+            if "dev" in morph_accuracies["md"]:
+                if best_morph_dev < morph_accuracies["md"]["dev"]:
+                    print("MORPH Epoch: %d New best dev score => best_dev, best_test: %lf %lf" %
+                          (epoch_no, morph_accuracies["md"]["dev"], morph_accuracies["md"]["test"]))
+                    best_morph_dev = morph_accuracies["md"]["dev"]
+                    best_morph_test = morph_accuracies["md"]["test"]
+                else:
+                    print("MORPH Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf"
+                          % (epoch_no, best_morph_dev, best_morph_test))
 
-        print("Epoch {} done. Average cost: {}".format(epoch, np.mean(epoch_costs)))
+        print("Epoch {} done. Average cost: {}".format(epoch_no, np.mean(epoch_costs)))
         print("MainTaggerModel dir: {}".format(model.model_path))
         print("Training took {} seconds for this epoch".format(time.time()-start_time))
 

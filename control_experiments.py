@@ -19,6 +19,8 @@ def my_config():
     host="localhost"
     experiment_name = "default_experiment_name"
 
+    lang_name = "turkish"
+
     datasets_root = "/home/onur/projects/research/turkish-ner/datasets"
 
     learning_rate = 0.01
@@ -64,17 +66,15 @@ def my_config():
     # word_lstm_dim = 200
     # cap_dim = 100
 
-    file_format = "conll"
+    file_format = "conllu"
 
-    train_filepath = "turkish/gungor.ner.train.only_consistent"
-    dev_filepath = "turkish/gungor.ner.dev.only_consistent"
-    test_filepath = "turkish/gungor.ner.test.only_consistent"
+    ner_train_file = ""
+    ner_dev_file = ""
+    ner_test_file = ""
 
-    yuret_train_filepath = "turkish/train.merge.utf8.conllu"
-    yuret_test_filepath = "turkish/test.merge.utf8.conllu"
-
-    train_with_yuret = 0
-    test_with_yuret = 1
+    md_train_file = ""
+    md_dev_file = ""
+    md_test_file = ""
 
     use_golden_morpho_analysis_in_word_representation = 0
 
@@ -89,38 +89,38 @@ def my_main():
 
 @ex.capture
 def train_a_single_configuration(
-                                              datasets_root,
-                                              crf,
-                                              lr_method,
-                                              batch_size,
-                                              sparse_updates_enabled,
-                                              dropout,
-                                              char_dim,
-                                              char_lstm_dim,
-                                              morpho_tag_dim,
-                                              morpho_tag_lstm_dim,
-                                              morpho_tag_type,
-                                              morpho_tag_column_index,
-                                              word_dim,
-                                              word_lstm_dim,
-                                              cap_dim, skip_testing, max_epochs,
-                                              file_format,
-                                              train_filepath,
-                                              dev_filepath,
-                                              test_filepath,
-                                              yuret_train_filepath,
-                                              yuret_test_filepath,
-                                              train_with_yuret,
-                                              test_with_yuret,
-                                              use_golden_morpho_analysis_in_word_representation,
-                                              embeddings_filepath,
-                                              integration_mode,
-                                              active_models,
-                                              multilayer,
-                                              shortcut_connections,
-                                              reload,
-                                              dynet_gpu,
-                                              _run):
+        lang_name,
+        datasets_root,
+        crf,
+        lr_method,
+        batch_size,
+        sparse_updates_enabled,
+        dropout,
+        char_dim,
+        char_lstm_dim,
+        morpho_tag_dim,
+        morpho_tag_lstm_dim,
+        morpho_tag_type,
+        morpho_tag_column_index,
+        word_dim,
+        word_lstm_dim,
+        cap_dim, skip_testing, max_epochs,
+        file_format,
+        ner_train_file,
+        ner_dev_file,
+        ner_test_file,
+        md_train_file,
+        md_dev_file,
+        md_test_file,
+        use_golden_morpho_analysis_in_word_representation,
+        embeddings_filepath,
+        integration_mode,
+        active_models,
+        multilayer,
+        shortcut_connections,
+        reload,
+        dynet_gpu,
+        _run):
 
     """
     python train.py --pre_emb ../../data/we-300.txt --train dataset/gungor.ner.train.only_consistent --dev dataset/gungor.ner.dev.only_consistent --test dataset/gungor.ner.test.only_consistent --word_di
@@ -136,9 +136,6 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
     if dynet_gpu == 1:
         execution_part += "--dynet-gpu 1 "
 
-    if train_with_yuret == 1:
-        execution_part += "--train_with_yuret "
-
     if use_golden_morpho_analysis_in_word_representation == 1:
         execution_part += "--use_golden_morpho_analysis_in_word_representation "
 
@@ -150,27 +147,24 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         else:
             embeddings_part = ""
 
-    print (train_filepath, dev_filepath, test_filepath, skip_testing, max_epochs)
-
     always_constant_part = "--file_format %s " \
-                           "-T %s/%s " \
-                           "-d %s/%s " \
-                           "-t %s/%s " \
+                           "--ner_train_file %s/%s/%s " \
                            "%s" \
+                           "--ner_test_file %s/%s/%s " \
+                           "--md_train_file %s/%s/%s " \
                            "%s" \
-                           "--yuret_train %s/%s " \
-                           "--yuret_test %s/%s " \
+                           "--md_test_file %s/%s/%s " \
                            "%s" \
                            "--skip-testing %d " \
                            "--tag_scheme iobes " \
                            "--maximum-epochs %d " % (file_format,
-                                                     datasets_root, train_filepath,
-                                                     datasets_root, dev_filepath,
-                                                     datasets_root, test_filepath,
-                                                     "--train_with_yuret " if train_with_yuret else "",
-                                                     "--test_with_yuret " if test_with_yuret else "",
-                                                     datasets_root, yuret_train_filepath,
-                                                     datasets_root, yuret_test_filepath,
+                                                     datasets_root, lang_name, ner_train_file,
+                                                     ("--ner_dev_file %s/%s/%s " % (datasets_root, lang_name, ner_dev_file)) if ner_dev_file else "",
+                                                     datasets_root, lang_name, ner_test_file,
+                                                     datasets_root, lang_name, md_train_file,
+                                                     ("--md_dev_file %s/%s/%s " % (datasets_root, lang_name,
+                                                                                    md_dev_file)) if md_dev_file else "",
+                                                     datasets_root, lang_name, md_test_file,
                                                      embeddings_part,
                                                      skip_testing, max_epochs)
 
@@ -227,7 +221,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
     model_path = get_model_subpath(parameters)
     print model_path
 
-    task_names = ["NER", "MORPH", "YURET"]
+    task_names = ["NER", "MORPH"]
 
     for task_name in task_names:
         _run.info["%s_dev_f_score" % task_name] = dict()
@@ -245,11 +239,11 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                                stderr=subprocess.STDOUT)
 
     def record_metric(epoch, label, value):
-        if str(epoch) in _run.info[label]:
-            _run.info[label][str(epoch)].append(value)
+        epoch_str = str(epoch)
+        if epoch_str in _run.info[label]:
+            _run.info[label][epoch_str].append(value)
         else:
-            _run.info[label][str(epoch)] = list()
-            _run.info[label][str(epoch)].append(value)
+            _run.info[label][epoch_str] = [value]
 
     def capture_information(line):
 
@@ -273,6 +267,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         sys.stdout.flush()
 
     return model_path
+
 
 if __name__ == '__main__':
     ex.run_commandline()

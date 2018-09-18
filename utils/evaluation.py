@@ -31,7 +31,7 @@ def eval_with_specific_model(model,
                              datasets_to_be_predicted,
                              return_datasets_with_predicted_labels=False):
 
-    # type: (MainTaggerModel, int, list, bool) -> object
+    # type: (MainTaggerModel, int, dict, bool) -> object
     eval_dir = eval_logs_dir
     batch_size = 1 # model.parameters['batch_size'] TODO: switch back for new models.
     integration_mode = model.parameters['integration_mode']
@@ -39,136 +39,158 @@ def eval_with_specific_model(model,
     id_to_tag = model.id_to_tag
     tag_scheme = model.parameters['t_s']
 
-    f_scores = {}
+    f_scores = {"ner":{}}
     # dataset_labels = ["dev", "test", "yuret"]
-    dataset_labels = [x[0] for x in datasets_to_be_predicted]
+    # dataset_labels = [map(lambda purpose: label+"_"+purpose, datasets_to_be_predicted[label].keys())
+    #                   for label in datasets_to_be_predicted.keys()]
 
-    total_correct_disambs = {dataset_label: 0 for dataset_label in dataset_labels}
-    total_disamb_targets = {dataset_label: 0 for dataset_label in dataset_labels}
+    # total_correct_disambs = {dataset_label: 0 for dataset_label in dataset_labels}
+    # total_disamb_targets = {dataset_label: 0 for dataset_label in dataset_labels}
+
+    total_correct_disambs = {label: {purpose: 0
+                                     for purpose in datasets_to_be_predicted[label].keys()}
+                             for label in datasets_to_be_predicted.keys()}
+
+    total_disamb_targets = {label: {purpose: 0
+                                     for purpose in datasets_to_be_predicted[label].keys()}
+                             for label in datasets_to_be_predicted.keys()}
+
     if active_models in [1, 2, 3]:
-        detailed_correct_disambs = {dataset_label: dd(int) for dataset_label in dataset_labels}
-        detailed_total_target_disambs = {dataset_label: dd(int) for dataset_label in dataset_labels}
 
-    datasets_with_predicted_labels = {}
+        detailed_correct_disambs = {label: {purpose: dd(int)
+                                        for purpose in datasets_to_be_predicted[label].keys()}
+                                for label in datasets_to_be_predicted.keys()}
 
-    for dataset_label, dataset_as_list in datasets_to_be_predicted:
+        detailed_total_target_disambs = {label: {purpose: dd(int)
+                                        for purpose in datasets_to_be_predicted[label].keys()}
+                                for label in datasets_to_be_predicted.keys()}
 
-        if len(dataset_as_list) == 0:
-            print "Skipping to evaluate %s dataset as it is empty" % dataset_label
-            total_correct_disambs[dataset_label] = -1
-            total_disamb_targets[dataset_label] = 1
-            continue
+    datasets_with_predicted_labels = {label: {purpose: {}
+                                        for purpose in datasets_to_be_predicted[label].keys()}
+                                for label in datasets_to_be_predicted.keys()}
 
-        print "Starting to evaluate %s dataset" % dataset_label
-        predictions = []
-        n_tags = len(id_to_tag)
-        count = np.zeros((n_tags, n_tags), dtype=np.int32)
+    # for dataset_label, dataset_as_list in datasets_to_be_predicted:
+    for label in datasets_to_be_predicted.keys():
+        for purpose in datasets_to_be_predicted[label].keys():
 
-        n_batches = int(math.ceil(float(len(dataset_as_list)) / batch_size))
+            dataset_as_list = datasets_to_be_predicted[label][purpose]
 
-        print "dataset_label: %s" % dataset_label
-        print ("n_batches: %d" % n_batches)
+            if len(dataset_as_list) == 0:
+                print "Skipping to evaluate %s dataset as it is empty" % (label+"_"+purpose)
+                total_correct_disambs[label][purpose] = -1
+                total_disamb_targets[label][purpose] = 1
+                continue
 
-        for batch_idx in range(n_batches):
-            # print("batch_idx: %d" % batch_idx)
-            sys.stdout.write(". ")
-            sys.stdout.flush()
+            print "Starting to evaluate %s dataset" % (label+"_"+purpose)
+            predictions = []
+            n_tags = len(id_to_tag)
+            count = np.zeros((n_tags, n_tags), dtype=np.int32)
 
-            sentences_in_the_batch = dataset_as_list[
-                                     (batch_idx * batch_size):((batch_idx + 1) * batch_size)]
+            n_batches = int(math.ceil(float(len(dataset_as_list)) / batch_size))
 
-            for sentence in sentences_in_the_batch:
-                dynet.renew_cg()
+            print "dataset_label: %s" % (label+"_"+purpose)
+            print ("n_batches: %d" % n_batches)
 
-                sentence_length = len(sentence['word_ids'])
+            for batch_idx in range(n_batches):
+                # print("batch_idx: %d" % batch_idx)
+                sys.stdout.write(". ")
+                sys.stdout.flush()
 
-                if active_models in [2, 3]:
-                    selected_morph_analyzes, decoded_tags = model.predict(sentence)
-                elif active_models in [1]:
-                    selected_morph_analyzes, _ = model.predict(sentence)
-                elif active_models in [0]:
-                    decoded_tags = model.predict(sentence)
+                sentences_in_the_batch = dataset_as_list[
+                                         (batch_idx * batch_size):((batch_idx + 1) * batch_size)]
 
-                if active_models in [0, 2, 3]: # i.e. not only MD
-                    p_tags = [id_to_tag[p_tag] for p_tag in decoded_tags]
-                    r_tags = [id_to_tag[p_tag] for p_tag in sentence['tag_ids']]
-                    if tag_scheme == 'iobes':
-                        p_tags = iobes_iob(p_tags)
-                        r_tags = iobes_iob(r_tags)
+                for sentence in sentences_in_the_batch:
+                    dynet.renew_cg()
 
-                    for i, (word_id, y_pred, y_real) in enumerate(
-                            zip(sentence['word_ids'], decoded_tags,
-                                sentence['tag_ids'])):
-                        new_line = " ".join([sentence['str_words'][i]] + [r_tags[i], p_tags[i]])
-                        predictions.append(new_line)
-                        count[y_real, y_pred] += 1
-                    predictions.append("")
+                    sentence_length = len(sentence['word_ids'])
 
-                if active_models in [1, 2, 3]:
-                    n_correct_morph_disambs = \
-                        sum([x == y for x, y, z in zip(selected_morph_analyzes,
-                                                    sentence['golden_morph_analysis_indices'],
-                                                    sentence['morpho_analyzes_tags']) if len(z) > 1])
-                    total_correct_disambs[dataset_label] += n_correct_morph_disambs
-                    total_disamb_targets[dataset_label] += sum([1 for el in sentence['morpho_analyzes_tags'] if len(el) > 1])
-                    for key, value in [(len(el), x == y) for el, x, y in zip(sentence['morpho_analyzes_tags'],
-                                                           selected_morph_analyzes,
-                                                           sentence['golden_morph_analysis_indices'])]:
-                        if value:
-                            detailed_correct_disambs[dataset_label][key] += 1
-                        detailed_total_target_disambs[dataset_label][key] += 1
-                    # total_possible_analyzes += sum([len(el) for el in sentence['morpho_analyzes_tags'] if len(el) > 1])
+                    if active_models in [2, 3] and label in "ner md".split(" "):
+                        selected_morph_analyzes, decoded_tags = model.predict(sentence)
+                    elif active_models in [1] and label == "md":
+                        selected_morph_analyzes, _ = model.predict(sentence)
+                    elif active_models in [0] and label == "ner":
+                        _, decoded_tags = model.predict(sentence)
 
-        print ""
+                    if active_models in [0, 2, 3] and label == "ner": # i.e. except MD
+                        p_tags = [id_to_tag[p_tag] for p_tag in decoded_tags]
+                        r_tags = [id_to_tag[r_tag] for r_tag in sentence['tag_ids']]
+                        if tag_scheme == 'iobes':
+                            p_tags = iobes_iob(p_tags)
+                            r_tags = iobes_iob(r_tags)
 
-        if active_models in [0, 2, 3]:
-            # Write predictions to disk and run CoNLL script externally
-            eval_id = np.random.randint(1000000, 2000000)
-            output_path = os.path.join(eval_dir,
-                                       "%s.eval.%i.epoch-%04d.output" % (
-                                           dataset_label, eval_id, epoch))
-            scores_path = os.path.join(eval_dir,
-                                       "%s.eval.%i.epoch-%04d.scores" % (
-                                           dataset_label, eval_id, epoch))
-            with codecs.open(output_path, 'w', 'utf8') as f:
-                f.write("\n".join(predictions))
+                        for i, (y_pred, y_real) in enumerate(
+                                zip(decoded_tags, sentence['tag_ids'])):
+                            new_line = " ".join([sentence['str_words'][i]] + [r_tags[i], p_tags[i]])
+                            predictions.append(new_line)
+                            count[y_real, y_pred] += 1
+                        predictions.append("")
 
-            print "Evaluating the %s dataset with conlleval script" % dataset_label
-            command_string = "%s < %s > %s" % (eval_script, output_path, scores_path)
-            print command_string
-            # os.system(command_string)
-            # sys.exit(0)
-            with codecs.open(output_path, "r", encoding="utf-8") as output_path_f:
-                eval_lines = [x.rstrip() for x in subprocess.check_output([eval_script],
-                                                                          stdin=output_path_f).split(
-                    "\n")]
+                    if active_models in [1, 2, 3] and label == "md":
+                        n_correct_morph_disambs = \
+                            sum([x == y for x, y, z in zip(selected_morph_analyzes,
+                                                        sentence['golden_morph_analysis_indices'],
+                                                        sentence['morpho_analyzes_tags']) if len(z) > 1])
+                        total_correct_disambs[label][purpose] += n_correct_morph_disambs
+                        total_disamb_targets[label][purpose] += sum([1 for el in sentence['morpho_analyzes_tags'] if len(el) > 1])
+                        for key, value in [(len(el), x == y) for el, x, y in zip(sentence['morpho_analyzes_tags'],
+                                                               selected_morph_analyzes,
+                                                               sentence['golden_morph_analysis_indices'])]:
+                            if value:
+                                detailed_correct_disambs[label][purpose][key] += 1
+                            detailed_total_target_disambs[label][purpose][key] += 1
+                        # total_possible_analyzes += sum([len(el) for el in sentence['morpho_analyzes_tags'] if len(el) > 1])
 
-                # CoNLL evaluation results
-                # eval_lines = [l.rstrip() for l in codecs.open(scores_path, 'r', 'utf8')]
-                for line in eval_lines:
-                    print line
-                f_scores[dataset_label] = float(eval_lines[1].split(" ")[-1])
+            print("")
 
-        if active_models in [1, 2, 3]:
-            for n_possible_analyzes in map(int, detailed_correct_disambs[dataset_label].keys()):
-                print "%s %d %d/%d" % (dataset_label,
-                                       n_possible_analyzes,
-                                       detailed_correct_disambs[dataset_label][n_possible_analyzes],
-                                       detailed_total_target_disambs[dataset_label][n_possible_analyzes])
+            if active_models in [0, 2, 3] and label == "ner":
+                # Write predictions to disk and run CoNLL script externally
+                eval_id = np.random.randint(1000000, 2000000)
+                output_path = os.path.join(eval_dir,
+                                           "%s.eval.%i.epoch-%04d.output" % (
+                                               (label + "_" + purpose), eval_id, epoch))
+                scores_path = os.path.join(eval_dir,
+                                           "%s.eval.%i.epoch-%04d.scores" % (
+                                               (label + "_" + purpose), eval_id, epoch))
+                with codecs.open(output_path, 'w', 'utf8') as f:
+                    f.write("\n".join(predictions))
 
-        if return_datasets_with_predicted_labels:
-            datasets_with_predicted_labels[dataset_label] = predictions
+                print "Evaluating the %s dataset with conlleval script" % (label + "_" + purpose)
+                command_string = "%s < %s > %s" % (eval_script, output_path, scores_path)
+                print command_string
+                # os.system(command_string)
+                # sys.exit(0)
+                with codecs.open(output_path, "r", encoding="utf-8") as output_path_f:
+                    eval_lines = [x.rstrip() for x in subprocess.check_output([eval_script],
+                                                                              stdin=output_path_f).split(
+                        "\n")]
+
+                    # CoNLL evaluation results
+                    # eval_lines = [l.rstrip() for l in codecs.open(scores_path, 'r', 'utf8')]
+                    for line in eval_lines:
+                        print line
+                    f_scores["ner"][purpose] = float(eval_lines[1].split(" ")[-1])
+
+            if active_models in [1, 2, 3]:
+                for n_possible_analyzes in map(int, detailed_correct_disambs[label][purpose].keys()):
+                    print "%s %d %d/%d" % ((label + "_" + purpose),
+                                           n_possible_analyzes,
+                                           detailed_correct_disambs[label][purpose][n_possible_analyzes],
+                                           detailed_total_target_disambs[label][purpose][n_possible_analyzes])
+
+            if return_datasets_with_predicted_labels:
+                datasets_with_predicted_labels[label][purpose] = predictions
 
     disambiguation_accuracies = {}
     if active_models in [0]:
         pass
     else:
-        for dataset_label in dataset_labels:
-            if total_disamb_targets[dataset_label] == 0:
-                total_correct_disambs[dataset_label] = -1
-                total_disamb_targets[dataset_label] = 1
-            disambiguation_accuracies[dataset_label] = \
-                total_correct_disambs[dataset_label] / float(total_disamb_targets[dataset_label])
+        for label in ["md"]:
+            for purpose in datasets_to_be_predicted[label].keys():
+                if total_disamb_targets[label][purpose] == 0:
+                    total_correct_disambs[label][purpose] = -1
+                    total_disamb_targets[label][purpose] = 1
+                disambiguation_accuracies[label][purpose] = \
+                    total_correct_disambs[label][purpose] / float(total_disamb_targets[label][purpose])
 
     return f_scores, disambiguation_accuracies, datasets_with_predicted_labels
 

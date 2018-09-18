@@ -299,34 +299,21 @@ def create_input(data, parameters, add_label, singletons=None):
 
 def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
     optparser = optparse.OptionParser()
-    optparser.add_option(
-        "-T", "--train", default="",
-        help="Train set location"
-    )
-    optparser.add_option(
-        "-d", "--dev", default="",
-        help="Dev set location"
-    )
-    optparser.add_option(
-        "-t", "--test", default="",
-        help="Test set location"
-    )
-    optparser.add_option(
-        "--yuret_train", default="",
-        help="yuret train set location"
-    )
-    optparser.add_option(
-        "--yuret_test", default="",
-        help="yuret test set location"
-    )
-    optparser.add_option(
-        "--train_with_yuret", default=False, action="store_true",
-        help="train with yuret training set"
-    )
-    optparser.add_option(
-        "--test_with_yuret", default=False, action="store_true",
-        help="test with yuret training set"
-    )
+
+    for label in ["ner", "md"]:
+        optparser.add_option(
+            "--{label}_train_file".format(label=label), default="",
+            help="Train set location"
+        )
+        optparser.add_option(
+            "--{label}_dev_file".format(label=label), default="",
+            help="Dev set location"
+        )
+        optparser.add_option(
+            "--{label}_test_file".format(label=label), default="",
+            help="Test set location"
+        )
+
     optparser.add_option(
         "--use_golden_morpho_analysis_in_word_representation", default=False, action="store_true",
         help="use golden morpho analysis when representing words"
@@ -511,8 +498,7 @@ def form_parameters_dict(opts):
     parameters['shortcut_connections'] = opts.shortcut_connections
 
     parameters['tying_method'] = opts.tying_method
-    parameters['train_with_yuret'] = opts.train_with_yuret
-    parameters['test_with_yuret'] = opts.test_with_yuret
+
     parameters['use_golden_morpho_analysis_in_word_representation'] = opts.use_golden_morpho_analysis_in_word_representation
 
     parameters['word_dim'] = opts.word_dim
@@ -550,21 +536,18 @@ def read_parameters_from_sys_argv(sys_argv):
     parameters = form_parameters_dict(opts)
 
     # Check parameters validity
-    parameters = check_parameter_validity(opts, parameters)
+    parameters = check_parameter_validity(parameters)
 
     return opts, parameters
 
 
-def check_parameter_validity(opts, parameters):
-    assert os.path.isfile(opts.train)
-    assert os.path.isfile(opts.dev)
-    assert os.path.isfile(opts.test)
+def check_parameter_validity(parameters):
+
     assert parameters['char_dim'] > 0 or parameters['word_dim'] > 0
     assert 0. <= parameters['dropout'] < 1.0
     assert parameters['t_s'] in ['iob', 'iobes']
     assert not parameters['all_emb'] or parameters['pre_emb']
     assert not parameters['pre_emb'] or parameters['word_dim'] > 0
     assert not parameters['pre_emb'] or os.path.isfile(parameters['pre_emb'])
-    if parameters['train_with_yuret']:
-        parameters['test_with_yuret'] = 1
+
     return parameters

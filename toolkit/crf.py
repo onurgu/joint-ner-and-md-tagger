@@ -39,7 +39,6 @@ class CRF():
         score = score + dynet.pick(self.transitions[self.e_id], tags[-1])
         return score
 
-
     def viterbi_loss(self, observations, tags):
         observations = [dynet.concatenate([obs, dynet.inputVector([-1e10, -1e10])], d=0) for obs in
                         observations]
@@ -49,7 +48,6 @@ class CRF():
             return (viterbi_score - gold_score), viterbi_tags
         else:
             return dynet.scalarInput(0), viterbi_tags
-
 
     def neg_log_loss(self, observations, tags):
         observations = [dynet.concatenate([obs, dynet.inputVector([-1e10, -1e10])], d=0) for obs in observations]
