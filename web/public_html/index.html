@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Neural Turkish Morphological Disambiguation</title>
+    <title>Joint NER and MD Tagger Demo</title>
 
       <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,7 +20,8 @@
 
 <h2>Joint NER and MD Tagger Demo</h2>
 
-    <p> Tokenizer is not working well for this development version. </p>
+    <!-- Geçen gün Moda'da kitap okuyan gençleri seyrederken çok mutlu oldum. -->
+    <p> Enter the sentence to be tagged by the model label the named entities  </p>
 
 
             <textarea id="input_text" class="form-control" rows="3"></textarea>
@@ -35,7 +36,7 @@
                 <tr>
                     <th>Line no</th>
                     <th>Surface form</th>
-                    <th>Analysis</th>
+                    <th>Analyses</th>
                 </tr>
                 </tbody>
             </table>
@@ -49,7 +50,7 @@
                 <tr>
                     <th>Line no</th>
                     <th>Surface form</th>
-                    <th>Disambiguated Analysis</th>
+                    <th>Predicted NER tag</th>
                 </tr>
                 </tbody>
             </table>

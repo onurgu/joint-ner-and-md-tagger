@@ -37,14 +37,14 @@ $('#submit_button').bind('click', function() {
                                 "<tr>" +
                                     "<th>Line no</th>" +
                                     "<th>Surface form</th>" +
-                                    "<th>Analysis</th>" +
+                                    "<th>Analyses</th>" +
                                 "</tr>" +
                                 "</tbody>");
     tagger_output_table.find("tbody").replaceWith("<tbody>" +
                                 "<tr>" +
                                     "<th>Line no</th>" +
                                     "<th>Surface form</th>" +
-                                    "<th>Disambiguated Analysis</th>" +
+                                    "<th>Predicted NER tag</th>" +
                                 "</tr>" +
                                 "</tbody>");
 
