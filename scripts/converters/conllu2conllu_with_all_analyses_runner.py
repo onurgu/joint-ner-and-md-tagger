@@ -15,11 +15,13 @@ except ImportError as e:
 
 assert len(sys.argv) == 2, "You should input the datasets_dirpath"
 
-lang_names = ["czech",
-              "finnish",
-              "hungarian",
-              "spanish",
-              "turkish"]
+# lang_names = ["czech",
+#               "finnish",
+#               "hungarian",
+#               "spanish",
+#               "turkish"]
+
+lang_names = ["turkish"]
 
 datasets_dirpath = sys.argv[1]
 
@@ -47,7 +49,7 @@ for lang_name in lang_names:
                        "{model_path} " \
                        "{input_filepath}"
 
-    sections = "ner md".split(" ")
+    sections = "md".split(" ")
 
     dataset_filepath_labels = "train_file dev_file test_file".split(" ")
 
