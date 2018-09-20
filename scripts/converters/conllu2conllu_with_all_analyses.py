@@ -1,3 +1,4 @@
+import codecs
 import subprocess
 import sys
 
@@ -32,3 +33,17 @@ result = subprocess.check_output(command_template.format(UDPIPE_COMMAND_PATH=UDP
                                                 output_filepath=input_filepath+".all_analyses").split(" "))
 
 print(result)
+
+with codecs.open(input_filepath+".all_analyses", "r") as f, codecs.open(input_filepath+".all_analyses.correct_analysis", "w") as  out_f:
+    line = f.readline()
+    while line:
+        output_line = line.strip()
+        if line[0] != "#" and len(line.strip()) > 0:
+            tokens = line.strip().split("\t")
+            if len(tokens) > 0:
+                escaped_correct_tags = tokens[5].replace("|", "&").replace("=", ">")
+                tokens[-1] += "|CORRECT_ANALYSIS=" + "".join([tokens[2], "&~", tokens[3], "~", tokens[4], "~", escaped_correct_tags])
+                output_line = "\t".join(tokens)
+        print(output_line)
+        out_f.write(output_line + "\n")
+        line = f.readline()

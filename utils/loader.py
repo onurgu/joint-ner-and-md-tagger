@@ -77,7 +77,10 @@ def update_tag_scheme(sentences, tag_scheme, file_format="conll"):
         if file_format == "conll":
             tags = [w[-1] for w in s]
         elif file_format == "conllu":
-            tags = [extract_correct_ner_tag_from_conllu(w) for w in s]
+            if contains_golden_label(s[0], "NER_TAG"):
+                tags = [extract_correct_ner_tag_from_conllu(w) for w in s]
+            else:
+                continue
         # Check that tags are given in the IOB format
         if not iob2(tags):
             s_str = '\n'.join(' '.join(w) for w in s)

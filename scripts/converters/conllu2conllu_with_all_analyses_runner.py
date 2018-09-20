@@ -15,13 +15,13 @@ except ImportError as e:
 
 assert len(sys.argv) == 2, "You should input the datasets_dirpath"
 
-# lang_names = ["czech",
-#               "finnish",
-#               "hungarian",
-#               "spanish",
-#               "turkish"]
+lang_names = ["czech",
+              "finnish",
+              "hungarian",
+              "spanish",
+              "turkish"]
 
-lang_names = ["turkish"]
+# lang_names = ["turkish"]
 
 datasets_dirpath = sys.argv[1]
 

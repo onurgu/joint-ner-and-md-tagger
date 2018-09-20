@@ -9,10 +9,11 @@ Disambiguate Morphological Tags" [1] to be presented at [COLING 2018](http://col
 # Training and testing
 
 We recommend using the helper scripts for conducting experiments. The scripts named `helper-script-*`
-run the experiments in the paper with given hyper parameters.
+run the experiments in the paper with given hyper parameters. Beware that the option `-j6` will make the script run
+six experiment configurations at once.
 
 
-    bash ./scripts/helper-script-to-run-the-experiment-set-small-sizes.sh campaing_name | parallel -j6
+    bash ./scripts/default/helper-script-to-run-the-experiment-set-small-sizes.sh campaing_name | parallel -j6
 
 For the reporting part to work, you should set up a working [`sacred`](https://github.com/IDSIA/sacred)
  environment, which is very easy if you choose a filesystem based storage. You can find an
@@ -21,10 +22,9 @@ For the reporting part to work, you should set up a working [`sacred`](https://g
 ## Tag sentences
 
 This project do not have a designated tagger script for now but you can obtain the output in `eval_dir`. 
-You should provide the text in tokenized form in CoNLL format.
-The script will tag both the development and testing files and produce files in `./evaluation/temp/eval_logs/`.
-If you need this and want to contribute by coding and sharing it with the project,
-you are welcome.
+You should provide the text in tokenized form in CoNLL format. The script will tag both the development and 
+testing files and produce files in `./evaluation/temp/eval_logs/`. If you need this and want to contribute by coding
+ and sharing it with the project, you are welcome.
 
 ## Replication of the experiments
 
