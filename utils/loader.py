@@ -313,7 +313,11 @@ def contains_golden_label(word, type):
 
 
 def extract_specific_single_field_content_from_conllu(word, field_name):
-    return load_MISC_column_contents(word[9])[field_name][0]
+    misc_dict = load_MISC_column_contents(word[9])
+    if field_name in misc_dict:
+        return misc_dict[field_name][0]
+    else:
+        return ""
 
 
 def extract_correct_analysis_from_conllu(word):
