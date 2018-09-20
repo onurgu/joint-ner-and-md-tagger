@@ -329,7 +329,11 @@ def extract_correct_ner_tag_from_conllu(word):
 
 
 def extract_all_analyses_from_conllu(word):
-    return load_MISC_column_contents(word[9])["ALL_ANALYSES"]
+    misc_dict = load_MISC_column_contents(word[9])
+    if "ALL_ANALYSES" in misc_dict:
+        return misc_dict["ALL_ANALYSES"]
+    else:
+        return []
 
 
 def is_number(s):
