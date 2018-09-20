@@ -9,17 +9,14 @@ if [ -f ${configuration_file_path} ]; then
     source ${configuration_file_path};
 fi
 
+file_format=conllu
+
 preamble="cd ${ner_tagger_root} && \
           source ${virtualenvwrapper_path} && \
           workon ${virtualenv_name} && \
           source ${environment_variables_path} && \
           export LD_PRELOAD=/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_avx2.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_def.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_core.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_intel_lp64.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_intel_thread.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/compiler/lib/intel64_lin/libiomp5.so && \
           python control_experiments.py ${sacred_args} with "
-
-dataset_filepaths="datasets_root=${datasets_root} \
-					train_filepath=turkish/gungor.ner.train.14.only_consistent \
-					dev_filepath=turkish/gungor.ner.dev.14.only_consistent \
-					test_filepath=turkish/gungor.ner.test.14.only_consistent "
 
 n_trials=10
 
@@ -29,6 +26,14 @@ morpho_tag_type=char
 for trial in `seq 1 ${n_trials}`; do
 
     for lang in czech spanish finnish hungarian; do
+
+        lang_dataset_root=${datasets_root}/${lang_name}
+
+        ini_filepath=${lang_dataset_root}/${lang_name}-joint-md-and-ner-tagger.ini
+        lang_dataset_filepaths=`python ./utils/ini_parse.py --input ${ini_filepath} --query ner.train_file ner.dev_file ner.test_file md.train_file md.dev_file md.test_file`
+
+        # lang_dataset_root=${lang_dataset_root}
+        dataset_filepaths="file_format=${file_format} lang_name=${lang_name} datasets_root=${datasets_root} ${lang_dataset_filepaths} "
 
         for morpho_tag_type in char ; do
 
@@ -45,7 +50,7 @@ for trial in `seq 1 ${n_trials}`; do
             # experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-trial-`printf "%02d" ${trial}`
             experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}
 
-            pre_command="echo ${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-trial-`printf "%02d" ${trial}` >> ${experiment_name}.log"
+            pre_command="echo ${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-lang_name-${lang_name}-trial-`printf "%02d" ${trial}` >> ${experiment_name}.log"
 
             for imode in 0 1 2 ; do
                 if [[ $imode == 0 ]]; then
