@@ -171,9 +171,10 @@ def load_MISC_column_contents(column):
     fields = column.split("|")
     for field in fields:
         tokens = field.split("=")
-        field_name = tokens[0]
-        field_content = [item.replace(">", "=") for item in tokens[1].split("&")]
-        fields_dict[field_name] = field_content
+        if len(tokens) == 2:
+            field_name = tokens[0]
+            field_content = [item.replace(">", "=") for item in tokens[1].split("&")]
+            fields_dict[field_name] = field_content
     return fields_dict
 
 def compile_MISC_column_contents(field_contents_dict):
