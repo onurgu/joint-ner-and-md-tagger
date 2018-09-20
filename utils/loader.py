@@ -524,36 +524,39 @@ def prepare_dataset(sentences,
             return turkish_lower(s.replace(u"+Prop", ""))
 
         golden_analysis_indices = []
-        if file_format == "conll" or (file_format == "conllu" and contains_golden_label(sentence[0], "CORRECT_ANALYSIS")):
+        if file_format == "conll" or (file_format == "conllu"):
             for w_idx in range(len(sentence)):
-                found = False
-                try:
-                    golden_analysis_idx = \
-                        all_analyses[w_idx]\
-                            .index(correct_analyses[w_idx])
-                    found = True
-                except ValueError as e:
-                    # step 1
-                    pass
-                if not found:
+                if not(contains_golden_label(sentence[w_idx], "CORRECT_ANALYSIS") and contains_golden_label(sentence[w_idx], "ALL_ANALYSES")):
+                    golden_analysis_idx = 0
+                else:
+                    found = False
                     try:
                         golden_analysis_idx = \
-                            map(remove_Prop_and_lower, all_analyses[w_idx])\
-                                .index(remove_Prop_and_lower(correct_analyses[w_idx]))
+                            all_analyses[w_idx]\
+                                .index(correct_analyses[w_idx])
                         found = True
                     except ValueError as e:
+                        # step 1
                         pass
-                if not found:
-                    if len(all_analyses[w_idx]) == 1:
-                        golden_analysis_idx = 0
-                    else:
-                        # WE expect that this never happens in gungor.ner.14.* files as they have been processed for unfound golden analyses
-                        import random
-                        golden_analysis_idx = random.randint(0, len(all_analyses[w_idx])-1)
-                if golden_analysis_idx >= len(all_analyses[w_idx]) or \
-                    golden_analysis_idx < 0 or \
-                    golden_analysis_idx >= len(morph_analyses_roots[w_idx]):
-                    logging.error("BEEP at golden analysis idx")
+                    if not found:
+                        try:
+                            golden_analysis_idx = \
+                                map(remove_Prop_and_lower, all_analyses[w_idx])\
+                                    .index(remove_Prop_and_lower(correct_analyses[w_idx]))
+                            found = True
+                        except ValueError as e:
+                            pass
+                    if not found:
+                        if len(all_analyses[w_idx]) <= 1:
+                            golden_analysis_idx = 0
+                        else:
+                            # WE expect that this never happens in gungor.ner.14.* files as they have been processed for unfound golden analyses
+                            import random
+                            golden_analysis_idx = random.randint(0, len(all_analyses[w_idx])-1)
+                    if golden_analysis_idx >= len(all_analyses[w_idx]) or \
+                        golden_analysis_idx < 0 or \
+                        golden_analysis_idx >= len(morph_analyses_roots[w_idx]):
+                        logging.error("BEEP at golden analysis idx")
                 golden_analysis_indices.append(golden_analysis_idx)
 
         data_item = {
