@@ -123,8 +123,12 @@ def train(sys_argv):
 
         model.trainer.status()
 
-        datasets_to_be_tested = {"ner": {"dev": data_dict["ner"]["dev"], "test": data_dict["ner"]["test"]},
-                                 "md": {"dev": data_dict["md"]["dev"], "test": data_dict["md"]["test"]}}
+        # datasets_to_be_tested = {"ner": {"dev": data_dict["ner"]["dev"], "test": data_dict["ner"]["test"]},
+        #                          "md": {"dev": data_dict["md"]["dev"], "test": data_dict["md"]["test"]}}
+
+        datasets_to_be_tested = {label: {purpose: data_dict[label][purpose]
+                                         for purpose in ["dev", "test"] if purpose in data_dict[label]}
+                                 for label in ["ner", "md"]}
 
         f_scores, morph_accuracies, _ = eval_with_specific_model(model,
                                                                  epoch_no,

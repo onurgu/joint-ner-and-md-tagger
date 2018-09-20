@@ -180,11 +180,11 @@ def eval_with_specific_model(model,
             if return_datasets_with_predicted_labels:
                 datasets_with_predicted_labels[label][purpose] = predictions
 
-    disambiguation_accuracies = {}
+    disambiguation_accuracies = {label: {} for label in datasets_to_be_predicted.keys()}
     if active_models in [0]:
         pass
     else:
-        for label in ["md"]:
+        for label in datasets_to_be_predicted.keys():
             for purpose in datasets_to_be_predicted[label].keys():
                 if total_disamb_targets[label][purpose] == 0:
                     total_correct_disambs[label][purpose] = -1
