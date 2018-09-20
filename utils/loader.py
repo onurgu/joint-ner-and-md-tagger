@@ -322,7 +322,12 @@ def extract_specific_single_field_content_from_conllu(word, field_name):
 
 
 def extract_correct_analysis_from_conllu(word):
-    return extract_specific_single_field_content_from_conllu(word, "CORRECT_ANALYSIS")
+    misc_dict = load_MISC_column_contents(word[9])
+    if "CORRECT_ANALYSIS" in misc_dict:
+        return misc_dict["CORRECT_ANALYSIS"]
+    else:
+        return "_"
+    # return extract_specific_single_field_content_from_conllu(word, "CORRECT_ANALYSIS")
 
 
 def extract_correct_ner_tag_from_conllu(word):
@@ -334,7 +339,7 @@ def extract_all_analyses_from_conllu(word):
     if "ALL_ANALYSES" in misc_dict:
         return misc_dict["ALL_ANALYSES"]
     else:
-        return None
+        return []
 
 
 def is_number(s):
