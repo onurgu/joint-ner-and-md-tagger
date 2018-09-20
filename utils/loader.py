@@ -53,7 +53,7 @@ def load_sentences(input_file_path_or_list, zeros, file_format="conll"):
             if file_format == "conll":
                 assert len(tokens) >= 2
             elif file_format == "conllu":
-                assert len(tokens) == 10, "CONLL-U format requires exactly 10 columns"
+                assert len(tokens) == 10, line + " " + " ".join(tokens) + " CONLL-U format requires exactly 10 columns"
             sentence.append(tokens)
             if len(tokens[0]) > max_word_length:
                 max_word_length = len(tokens[0])
