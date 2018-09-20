@@ -25,7 +25,7 @@ morpho_tag_type=char
 
 for trial in `seq 1 ${n_trials}`; do
 
-    for lang in czech spanish finnish hungarian; do
+    for lang_name in czech spanish finnish hungarian; do
 
         lang_dataset_root=${datasets_root}/${lang_name}
 
