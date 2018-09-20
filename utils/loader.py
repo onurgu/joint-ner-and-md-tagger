@@ -1,4 +1,5 @@
 # coding=utf-8
+from functools import partial
 import itertools
 import os
 import re
@@ -317,7 +318,7 @@ def extract_specific_single_field_content_from_conllu(word, field_name):
     if field_name in misc_dict:
         return misc_dict[field_name][0]
     else:
-        return ""
+        return None
 
 
 def extract_correct_analysis_from_conllu(word):
@@ -333,7 +334,7 @@ def extract_all_analyses_from_conllu(word):
     if "ALL_ANALYSES" in misc_dict:
         return misc_dict["ALL_ANALYSES"]
     else:
-        return []
+        return None
 
 
 def is_number(s):
@@ -491,16 +492,26 @@ def prepare_dataset(sentences,
 
         # All candidate morphological analyses
 
+        def replace_if_None(x, replacement):
+            if x is None:
+                return replacement
+            else:
+                x
+
         all_analyses = []
         if file_format == "conll":
             correct_analyses = [w[morpho_tag_column_index] for w in sentence]
             all_analyses = [w[2:-1] for w in sentence]
         elif file_format == "conllu":
-            if contains_golden_label(sentence[0], "CORRECT_ANALYSIS"):
-                correct_analyses = [extract_correct_analysis_from_conllu(w) for w in sentence]
-            else:
-                correct_analyses = []
+            correct_analyses = [extract_correct_analysis_from_conllu(w) for w in sentence]
+            for i in range(len(correct_analyses)):
+                if correct_analyses[i] is None:
+                    correct_analyses[i] = ""
             all_analyses = [extract_all_analyses_from_conllu(w) for w in sentence]
+            for i in range(len(all_analyses)):
+                if all_analyses[i] is None:
+                    all_analyses[i] = []
+
 
         # for now we ignore different schemes we did in previous morph. tag parses.
         morph_analyses_tags = [[map(f_morpho_tag_to_id, analysis.split(morpho_tag_separator)[1:]) \
