@@ -38,6 +38,8 @@ def load_sentences(input_file_path_or_list, zeros, file_format="conll"):
         sep = None
 
     for line in input_f:
+        if file_format == "conllu" and line.startswith("#"):
+            continue
         line = zero_digits(line.rstrip()) if zeros else line.rstrip()
         if not line:
             if len(sentence) > 0:
