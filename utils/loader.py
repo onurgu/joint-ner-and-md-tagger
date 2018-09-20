@@ -324,7 +324,7 @@ def extract_specific_single_field_content_from_conllu(word, field_name):
 def extract_correct_analysis_from_conllu(word):
     misc_dict = load_MISC_column_contents(word[9])
     if "CORRECT_ANALYSIS" in misc_dict:
-        return misc_dict["CORRECT_ANALYSIS"]
+        return misc_dict["CORRECT_ANALYSIS"][0]
     else:
         return "_"
     # return extract_specific_single_field_content_from_conllu(word, "CORRECT_ANALYSIS")
@@ -876,7 +876,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     if for_training:
         triple_list = []
         for purpose in ["train", "dev", "test"]:
-            triple_list += [[purpose, stats_dict["ner"][purpose], unique_words_dict["ner"][purpose]]]
+            triple_list += [[purpose, stats_dict["ner"][purpose], unique_words_dict["ner"][purpose]]] if purpose in stats_dict["ner"] else []
 
         for label, bucket_stats, n_unique_words in triple_list:
             int32_items = len(stats_dict["ner"]["train"]) * (max_sentence_lengths[label] * (5 + max_word_lengths[label]) + 1)
