@@ -60,7 +60,7 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
 
         print initial_keys
 
-        result_designation_labels = ["MORPH", "NER", "YURET"]
+        result_designation_labels = ["MORPH", "NER"]
 
         dict_to_report["epochs"] = max([len(run["info"][label].keys())
                                         for label in ["NER_dev_f_score", "MORPH_dev_f_score"]])
@@ -69,10 +69,7 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
 
             print "result_designation_label: ", result_designation_label
 
-            if result_designation_label == "YURET":
-                best_performances = run["info"][result_designation_label + "_test_f_score"]
-            else:
-                best_performances = run["info"][result_designation_label + "_dev_f_score"]
+            best_performances = run["info"][result_designation_label + "_dev_f_score"]
             print best_performances
             best_dev_result_for_this_run = 0
             best_test_result_for_this_run = 0
@@ -105,7 +102,6 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
         configs.append({key: dict_to_report[key] for key in [x for x in ["host",
                                                              "integration_mode",
                                                              "active_models",
-                                                             "train_with_yuret",
                                                              "use_golden_morpho_analysis_in_word_representation",
                                                              "multilayer",
                                                              "shortcut_connections",
@@ -124,7 +120,6 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
 
     df_groupedby_hyperparameters = df.groupby(["integration_mode",
                                              "active_models",
-                                             "train_with_yuret",
                                              "use_golden_morpho_analysis_in_word_representation",
                                              "multilayer",
                                              "shortcut_connections"])
