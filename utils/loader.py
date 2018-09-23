@@ -592,6 +592,8 @@ def prepare_dataset(sentences,
 
         if contains_golden_label(sentence[0], "NER_TAG"):
             data_item['tag_ids'] = ner_labels
+        else:
+            data_item['tag_ids'] = []
 
         # This is always added because they are not labels, they can be computed deterministically
         if morpho_tag_dimension > 0:
