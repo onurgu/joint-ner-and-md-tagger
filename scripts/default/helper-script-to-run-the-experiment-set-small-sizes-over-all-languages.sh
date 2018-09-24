@@ -85,16 +85,6 @@ for trial in `seq 1 ${n_trials}`; do
                         experiment_name=${experiment_name} ;"
                         echo $command;
                     done;
-                    command=${pre_command}" && "" ${preamble} \
-                    active_models=0 \
-                    integration_mode=0 \
-                    use_golden_morpho_analysis_in_word_representation=1 \
-                    dynet_gpu=0 \
-                    embeddings_filepath=\"\" \
-                    ${dataset_filepaths} \
-                    $small_sizes \
-                    experiment_name=${experiment_name} ;"
-                    echo $command;
                 elif [[ $imode == 1 ]]; then
                     command=${pre_command}" && "" ${preamble} \
                     active_models=2 \
