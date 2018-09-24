@@ -147,7 +147,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         else:
             embeddings_part = ""
 
-    always_constant_part = "--file_format %s " \
+    always_constant_part = "--lang_name %s --file_format %s " \
                            "--ner_train_file %s/%s/%s " \
                            "%s" \
                            "--ner_test_file %s/%s/%s " \
@@ -157,7 +157,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                            "%s" \
                            "--skip-testing %d " \
                            "--tag_scheme iobes " \
-                           "--maximum-epochs %d " % (file_format,
+                           "--maximum-epochs %d " % (lang_name, file_format,
                                                      datasets_root, lang_name, ner_train_file,
                                                      ("--ner_dev_file %s/%s/%s " % (datasets_root, lang_name, ner_dev_file)) if ner_dev_file else "",
                                                      datasets_root, lang_name, ner_test_file,

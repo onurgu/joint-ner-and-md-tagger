@@ -55,7 +55,6 @@ class CRF():
         forward_score = self.forward(observations)
         return forward_score - gold_score
 
-
     def forward(self, observations):
         def log_sum_exp(scores):
             npval = scores.npvalue()

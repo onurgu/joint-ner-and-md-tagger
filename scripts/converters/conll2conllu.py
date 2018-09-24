@@ -5,7 +5,9 @@ token_index = 1
 line = sys.stdin.readline().strip()
 while line:
 
-    if line == "\n":
+    line = line.strip()
+
+    if len(line) == 0:
         token_index = 1
         print("")
     else:

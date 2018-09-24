@@ -57,6 +57,8 @@ def load_sentences(input_file_path_or_list, zeros, file_format="conll"):
                 assert len(tokens) >= 2
             elif file_format == "conllu":
                 assert len(tokens) == 10, line + " " + " ".join(tokens) + " CONLL-U format requires exactly 10 columns"
+                if "-" in tokens[0]: # skip if the first column contains '-' as this indicates that this line is irrelavant for us.
+                    continue
             sentence.append(tokens)
             if len(tokens[0]) > max_word_length:
                 max_word_length = len(tokens[0])
@@ -174,7 +176,7 @@ def load_MISC_column_contents(column):
         tokens = field.split("=")
         if len(tokens) == 2:
             field_name = tokens[0]
-            field_content = [item.replace(">", "=") for item in tokens[1].split("&")]
+            field_content = [item for item in tokens[1].split("!")]
             fields_dict[field_name] = field_content
     return fields_dict
 
@@ -182,7 +184,7 @@ def compile_MISC_column_contents(field_contents_dict):
     field_contents_str = ""
     for field_label in field_contents_dict.keys():
         field_contents_str += field_label + "=" + \
-                              "&".join([item.replace("=", ">") for item in field_contents_dict[field_label]]) \
+                              "!".join(field_contents_dict[field_label]) \
                               + "|"
     field_contents_str = field_contents_str[:-1]
     return field_contents_str
@@ -210,7 +212,10 @@ def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_i
             # extract CORRECT_ANALYSIS and ALL_ANALYSES fields from column 10
 
             morpho_tags = ["".join([extract_correct_analysis_from_conllu(w) for w in s]) for s in sentences]
-            morpho_tags += [ww for ww in load_MISC_column_contents(w[9])["ALL_ANALYSES"] for w in s for s in sentences]
+            _tmp_morpho_tags = [[load_MISC_column_contents(w[9]) for w in s] for s in sentences]
+            morpho_tags += ["".join(["".join([analysis for analysis in misc_column_contents["ALL_ANALYSES"]])
+                                     for misc_column_contents in s if "ALL_ANALYSES" in misc_column_contents])
+                            for s in _tmp_morpho_tags]
         else:
             morpho_tags = extract_morpho_tags_ordered(morpho_tag_type,
                                                       sentences, morpho_tag_column_index,
@@ -411,15 +416,14 @@ def prepare_dataset(sentences,
                     morpho_tag_dimension=0,
                     morpho_tag_type='wo_root',
                     morpho_tag_column_index=1,
-                    file_format="conll"):
+                    file_format="conll",
+                    morpho_tag_separator="+"):
     """
     Prepare the dataset. Return a list of lists of dictionaries containing:
         - word indexes
         - word char indexes
         - tag indexes
     """
-
-    morpho_tag_separator = "+"
 
     def lower_or_not(x): return x.lower() if lower else x
     data = []
@@ -517,9 +521,11 @@ def prepare_dataset(sentences,
                 if all_analyses[i] is None:
                     all_analyses[i] = []
 
+        if len(all_analyses) > 0 and len(all_analyses[0]) == 0:
+            print "ERROR IN ALL_ANALYSES"
 
         # for now we ignore different schemes we did in previous morph. tag parses.
-        morph_analyses_tags = [[map(f_morpho_tag_to_id, analysis.split(morpho_tag_separator)[1:]) \
+        morph_analyses_tags = [[map(f_morpho_tag_to_id, list("".join(analysis.split(morpho_tag_separator)[1:]))) \
                                     if analysis.split(morpho_tag_separator)[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
                                 for analysis in analyses] for analyses in all_analyses]
 
@@ -801,7 +807,8 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                         prepare_dataset(training_sets[label][purpose],
                                         word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
                                         parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
-                                        file_format=parameters['file_format'])
+                                        file_format=parameters['file_format'],
+                                        morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "&"))
 
     for label in ["ner", "md"]:
         print label
@@ -810,7 +817,8 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                 training_sets[label]["test"],
                 word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
                 parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
-                file_format=parameters['file_format'])
+                file_format=parameters['file_format'],
+                morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "&"))
 
     if for_training:
         for label in ["ner", "md"]:

@@ -315,6 +315,11 @@ def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
         )
 
     optparser.add_option(
+        "--lang_name", default="turkish",
+        help="langugage name"
+    )
+
+    optparser.add_option(
         "--use_golden_morpho_analysis_in_word_representation", default=False, action="store_true",
         help="use golden morpho analysis when representing words"
     )
@@ -515,6 +520,7 @@ def form_parameters_dict(opts):
     parameters['batch_size'] = opts.batch_size
 
     parameters['file_format'] = opts.file_format
+    parameters['lang_name'] = opts.lang_name
 
     return parameters
 
