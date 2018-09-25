@@ -239,6 +239,9 @@ class MainTaggerModel(object):
                                                       context]))
             #return dynet.tanh(dynet.sum_cols(dynet.reshape(context, (int(self.sentence_level_bilstm_contexts_length/2), 2))))
 
+        print("morph_analysis_representations", morph_analysis_representations)
+        print("context_representations", context_representations)
+
         morph_analysis_scores = \
             [dynet.softmax(
                 dynet.concatenate([dynet.dot_product(morph_analysis_representation,
