@@ -608,6 +608,17 @@ def prepare_dataset(sentences,
                     file_format == "conllu" and contains_golden_label(sentence[0], "CORRECT_ANALYSIS")):
                 data_item['golden_morph_analysis_indices'] = golden_analysis_indices
 
+        if len(morph_analyses_tags) == 0:
+            print("ERROR1")
+        for morph_analyses_tags_for_word in morph_analyses_tags:
+            if any([len(tag_sequence) == 0 for tag_sequence in morph_analyses_tags_for_word]):
+                print("ERROR2")
+        if len(morph_analyses_roots) == 0:
+            print("ERROR3")
+        for morph_analyses_roots_for_word in morph_analyses_roots:
+            if any([len(root_sequence) == 0 for root_sequence in morph_analyses_roots_for_word]):
+                print("ERROR4")
+
         data.append(data_item)
 
     logging.info("Sorting the dataset by sentence length..")
