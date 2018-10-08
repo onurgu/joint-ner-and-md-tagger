@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 
@@ -18,7 +19,7 @@ while line:
         conllu_tokens[0] = str(token_index)
         conllu_tokens[1] = tokens[0]
 
-        conllu_tokens[-1] = "NER_TAG=" + tokens[-1]
+        conllu_tokens[-1] = json.dumps({"NER_TAG": tokens[-1]}, separators=(',', ':'))
 
         print("\t".join(conllu_tokens))
         token_index += 1
