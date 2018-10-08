@@ -1,6 +1,7 @@
 # coding=utf-8
 from functools import partial
 import itertools
+import json
 import os
 import re
 import codecs
@@ -97,7 +98,7 @@ def update_tag_scheme(sentences, tag_scheme, file_format="conll"):
                     word[-1] = new_tag
                 elif file_format == "conllu":
                     field_contents_dict = load_MISC_column_contents(word[9])
-                    field_contents_dict["NER_TAG"] = [new_tag]
+                    field_contents_dict["NER_TAG"] = new_tag
                     word[9] = compile_MISC_column_contents(field_contents_dict)
         elif tag_scheme == 'iobes':
             new_tags = iob_iobes(tags)
@@ -106,7 +107,7 @@ def update_tag_scheme(sentences, tag_scheme, file_format="conll"):
                     word[-1] = new_tag
                 elif file_format == "conllu":
                     field_contents_dict = load_MISC_column_contents(word[9])
-                    field_contents_dict["NER_TAG"] = [new_tag]
+                    field_contents_dict["NER_TAG"] = new_tag
                     word[9] = compile_MISC_column_contents(field_contents_dict)
         else:
             raise Exception('Unknown tagging scheme!')
@@ -170,23 +171,25 @@ def tag_mapping(sentences, file_format="conll"):
 
 
 def load_MISC_column_contents(column):
-    fields_dict = {}
-    fields = column.split("|")
-    for field in fields:
-        tokens = field.split("=")
-        if len(tokens) == 2:
-            field_name = tokens[0]
-            field_content = [item for item in tokens[1].split("!")]
-            fields_dict[field_name] = field_content
+    # fields_dict = {}
+    # fields = column.split("|")
+    # for field in fields:
+    #     tokens = field.split("=")
+    #     if len(tokens) == 2:
+    #         field_name = tokens[0]
+    #         field_content = [item for item in tokens[1].split("!")]
+    #         fields_dict[field_name] = field_content
+    fields_dict = json.loads(column)
     return fields_dict
 
 def compile_MISC_column_contents(field_contents_dict):
-    field_contents_str = ""
-    for field_label in field_contents_dict.keys():
-        field_contents_str += field_label + "=" + \
-                              "!".join(field_contents_dict[field_label]) \
-                              + "|"
-    field_contents_str = field_contents_str[:-1]
+    # field_contents_str = ""
+    # for field_label in field_contents_dict.keys():
+    #     field_contents_str += field_label + "=" + \
+    #                           "!".join(field_contents_dict[field_label]) \
+    #                           + "|"
+    # field_contents_str = field_contents_str[:-1]
+    field_contents_str = json.dumps(field_contents_dict, separators=(',', ':'))
     return field_contents_str
 
 
@@ -321,7 +324,7 @@ def contains_golden_label(word, type):
 def extract_specific_single_field_content_from_conllu(word, field_name):
     misc_dict = load_MISC_column_contents(word[9])
     if field_name in misc_dict:
-        return misc_dict[field_name][0]
+        return misc_dict[field_name]
     else:
         return None
 
@@ -329,7 +332,7 @@ def extract_specific_single_field_content_from_conllu(word, field_name):
 def extract_correct_analysis_from_conllu(word):
     misc_dict = load_MISC_column_contents(word[9])
     if "CORRECT_ANALYSIS" in misc_dict:
-        return misc_dict["CORRECT_ANALYSIS"][0]
+        return misc_dict["CORRECT_ANALYSIS"]
     else:
         return "_"
     # return extract_specific_single_field_content_from_conllu(word, "CORRECT_ANALYSIS")
