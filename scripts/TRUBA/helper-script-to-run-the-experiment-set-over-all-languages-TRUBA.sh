@@ -30,7 +30,7 @@ for trial in `seq 1 ${n_trials}`; do
         lang_dataset_root=${datasets_root}/${lang_name}
 
         ini_filepath=${lang_dataset_root}/${lang_name}-joint-md-and-ner-tagger.ini
-        lang_dataset_filepaths=`python ./utils/ini_parse.py --input ${ini_filepath} --query ner.train_file ner.dev_file ner.test_file md.train_file md.dev_file md.test_file`
+        lang_dataset_filepaths=`python ./utils/ini_parse.py --add_suffixes --input ${ini_filepath} --query ner.train_file ner.dev_file ner.test_file md.train_file md.dev_file md.test_file`
 
         # lang_dataset_root=${lang_dataset_root}
         dataset_filepaths="file_format=${file_format} lang_name=${lang_name} datasets_root=${datasets_root} ${lang_dataset_filepaths} "
