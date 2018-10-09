@@ -16,7 +16,7 @@ max_jobs_to_submit=100
 
 #echo $jobs_line_by_line | while read line; do
 
-${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} | while read line; do
+bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} | while read line; do
 
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id
