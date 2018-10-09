@@ -528,7 +528,7 @@ def prepare_dataset(sentences,
             print "ERROR IN ALL_ANALYSES"
 
         # for now we ignore different schemes we did in previous morph. tag parses.
-        morph_analyses_tags = [[map(f_morpho_tag_to_id, list("".join(analysis.split(morpho_tag_separator)[1:]))) \
+        morph_analyses_tags = [[map(f_morpho_tag_to_id, list(morpho_tag_separator.join(analysis.split(morpho_tag_separator)[1:]))) \
                                     if analysis.split(morpho_tag_separator)[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
                                 for analysis in analyses] for analyses in all_analyses]
 
@@ -812,6 +812,8 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     unique_words_dict = {"ner": {}, "md": {}}
     stats_dict = {"ner": {}, "md": {}}
 
+    ud_morpho_tag_separator = "|"
+
     # Index data
     if for_training:
         for label in ["ner", "md"]:
@@ -822,7 +824,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                                         word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
                                         parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
                                         file_format=parameters['file_format'],
-                                        morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "&"))
+                                        morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else ud_morpho_tag_separator))
 
     for label in ["ner", "md"]:
         print label
@@ -832,7 +834,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                 word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
                 parameters['lower'], parameters['mt_d'], parameters['mt_t'], parameters['mt_ci'],
                 file_format=parameters['file_format'],
-                morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "&"))
+                morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else ud_morpho_tag_separator))
 
     if for_training:
         for label in ["ner", "md"]:

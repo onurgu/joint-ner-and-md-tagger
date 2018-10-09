@@ -267,7 +267,7 @@ def predict_sentences_given_model(sentences_string, model):
         word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
         model.parameters['lower'],
         model.parameters['mt_d'], model.parameters['mt_t'], model.parameters['mt_ci'],
-        morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "&")
+        morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "|")
     )
 
     f_scores, morph_accuracies, labeled_sentences = \
