@@ -607,8 +607,11 @@ class MainTaggerModel(object):
 
         if self.parameters['active_models'] in [0, 2, 3]:
             tag_scores = self.calculate_tag_scores(last_layer_context_representations)
-            _, decoded_tags = self.crf_module.viterbi_loss(tag_scores,
-                                                              sentence['tag_ids'])
+            # _, decoded_tags = self.crf_module.viterbi_loss(tag_scores,
+            #                                                   sentence['tag_ids'])
+            observations = [dynet.concatenate([obs, dynet.inputVector([-1e10, -1e10])], d=0) for obs in
+                            tag_scores]
+            decoded_tags, _ = self.crf_module.viterbi_decoding(observations)
         else:
             decoded_tags = []
 
