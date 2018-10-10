@@ -47,4 +47,25 @@ done
 
 ### PART 2: Turkish
 #
-#bash ./scripts/converters/gungor2conllu-runner.sh
+bash ./scripts/converters/gungor2conllu-runner.sh
+
+for lang in turkish; do
+    mkdir -p ${target_datasets_dir}/${lang}
+    cp ${datasets_dir}/${lang}/${lang}-joint-md-and-ner-tagger.ini ${target_datasets_dir}/${lang}
+    ini_filepath=${datasets_dir}/${lang}/${lang}-joint-md-and-ner-tagger.ini
+
+    for label in train dev test; do
+
+            lang_dataset_filepath=`python ./utils/ini_parse.py --only_values --input ${ini_filepath} --query ner.${label}_file`
+
+            ner_source_file=${lang}/${lang_dataset_filepath}
+            echo cp ${datasets_dir}/${ner_source_file} ${target_datasets_dir}/${ner_source_file}.all_analyses.tagged
+            cp ${datasets_dir}/${ner_source_file} ${target_datasets_dir}/${ner_source_file}.all_analyses.tagged
+
+            lang_dataset_filepath=`python ./utils/ini_parse.py --only_values --input ${ini_filepath} --query md.${label}_file`
+
+            md_source_file=${lang}/${lang_dataset_filepath}
+            echo cp ${datasets_dir}/${md_source_file} ${target_datasets_dir}/${md_source_file}.all_analyses
+            cp ${datasets_dir}/${md_source_file} ${target_datasets_dir}/${md_source_file}.all_analyses
+    done;
+done
