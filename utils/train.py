@@ -13,7 +13,6 @@ import os
 import numpy as np
 
 from utils.evaluation import eval_with_specific_model
-from utils.loader import prepare_datasets
 
 from toolkit.joint_ner_and_md_model import MainTaggerModel
 from utils import models_path, eval_script, eval_logs_dir, read_parameters_from_sys_argv
@@ -34,6 +33,9 @@ def train(sys_argv):
         raise Exception('CoNLL evaluation script not found at "%s"' % eval_script)
 
     # Reload
+    if opts.reload:
+        model = SampleModelImpl
+
     if opts.model_epoch_path:
         model = MainTaggerModel(models_path=models_path,
                                 model_path=opts.model_path,
@@ -46,12 +48,6 @@ def train(sys_argv):
                                 models_path=models_path, overwrite_mappings=opts.overwrite_mappings)
 
     print("MainTaggerModel location: {}".format(model.model_path))
-
-    # Prepare the data
-    # dev_data, _, \
-    # id_to_tag, tag_scheme, test_data, \
-    # train_data, train_stats, word_to_id, \
-    # yuret_test_data, yuret_train_data = prepare_datasets(model, opts, parameters)
 
     data_dict, id_to_tag, word_to_id, stats_dict = prepare_datasets(model, opts, parameters)
 
