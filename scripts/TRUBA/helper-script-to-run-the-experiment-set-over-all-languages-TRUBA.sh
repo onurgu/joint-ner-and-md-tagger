@@ -4,6 +4,7 @@ experiment_name=${1:-section1-all-20180311-01}
 original_experiment_name=${experiment_name}
 
 configuration_file_path=${3:-./scripts/TRUBA/configuration-variables.sh}
+debug=${4:-0}
 
 if [ -f ${configuration_file_path} ]; then
     source ${configuration_file_path};
@@ -16,7 +17,7 @@ preamble="cd ${ner_tagger_root} && \
           workon ${virtualenv_name} && \
           source ${environment_variables_path} && \
           export LD_PRELOAD=/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_avx2.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_def.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_core.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_intel_lp64.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/mkl/lib/intel64_lin/libmkl_intel_thread.so:/truba/sw/centos7.3/comp/intel/PS2017-update1/compilers_and_libraries_2017.1.132/linux/compiler/lib/intel64_lin/libiomp5.so && \
-          python control_experiments.py ${sacred_args} with "
+          python control_experiments.py ${sacred_args} with debug=${debug} "
 
 n_trials=10
 

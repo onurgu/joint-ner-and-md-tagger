@@ -467,6 +467,10 @@ def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
         help="File format of the data files"
     )
     optparser.add_option(
+        "--debug", default="0",
+        type='int', help="whether to print lots of debugging info."
+    )
+    optparser.add_option(
         "--dynet-gpu", default="1",
         type='int', help="Use gpu or not"
     )
@@ -521,6 +525,8 @@ def form_parameters_dict(opts):
 
     parameters['file_format'] = opts.file_format
     parameters['lang_name'] = opts.lang_name
+
+    parameters['debug'] = 1 if opts.debug == 1 else 0
 
     return parameters
 

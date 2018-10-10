@@ -191,7 +191,8 @@ class MainTaggerModel(object):
                    self.parameters['integration_mode'] != 0:
                 assert False, "integration_mode should be set to zero when active_models == 1"
 
-            print("str_words", sentence["str_words"])
+            if self.parameters['debug'] == 1:
+                print("str_words", sentence["str_words"])
             morph_analysis_representations, morph_analysis_scores = \
                 self.get_morph_analysis_representations_and_scores(sentence,
                                                                    context_representations_for_md_loss)
@@ -240,8 +241,9 @@ class MainTaggerModel(object):
                                                       context]))
             #return dynet.tanh(dynet.sum_cols(dynet.reshape(context, (int(self.sentence_level_bilstm_contexts_length/2), 2))))
 
-        print("morph_analysis_representations", morph_analysis_representations)
-        print("context_representations", context_representations)
+        if self.parameters['debug'] == 1:
+            print("morph_analysis_representations", morph_analysis_representations)
+            print("context_representations", context_representations)
 
         morph_analysis_scores = \
             [dynet.softmax(

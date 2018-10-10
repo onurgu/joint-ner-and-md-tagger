@@ -68,6 +68,8 @@ def my_config():
 
     file_format = "conllu"
 
+    debug = 0
+
     ner_train_file = ""
     ner_dev_file = ""
     ner_test_file = ""
@@ -106,6 +108,7 @@ def train_a_single_configuration(
         word_lstm_dim,
         cap_dim, skip_testing, max_epochs,
         file_format,
+        debug,
         ner_train_file,
         ner_dev_file,
         ner_test_file,
@@ -138,6 +141,8 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
     if use_golden_morpho_analysis_in_word_representation == 1:
         execution_part += "--use_golden_morpho_analysis_in_word_representation "
+
+    execution_part += "--debug " + str(debug) + " "
 
     if word_dim == 0:
         embeddings_part = ""

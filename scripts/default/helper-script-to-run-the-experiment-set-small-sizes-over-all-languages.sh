@@ -12,6 +12,7 @@ if [ -f ${configuration_variables_path} ]; then
 fi
 
 short_version=${3:-no}
+debug=${4:-0}
 
 ner_tagger_root=${ner_tagger_root:-~/projectdir}
 virtualenv_name=${virtualenv_name:-virtualenv_containing_dynet}
@@ -32,7 +33,7 @@ preamble="cd ${ner_tagger_root} && \
           source ${virtualenvwrapper_path} && \
           workon ${virtualenv_name} && \
           source ${environment_variables_path} && \
-          python control_experiments.py ${sacred_args} with "
+          python control_experiments.py ${sacred_args} with debug=${debug} "
 
 n_trials=10
 
