@@ -1,10 +1,5 @@
 
 # coding: utf-8
-
-# In[2]:
-
-
-import pymongo
 from IPython.display import display
 
 import glob
@@ -34,6 +29,7 @@ def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/"):
 
 def list_campaigns(db_type):
     if db_type == "mongo":
+        import pymongo
         client = pymongo.MongoClient("localhost", 27017)
         db = client.joint_ner_and_md
         campaign_names = db.runs.distinct('config.experiment_name')
@@ -46,6 +42,7 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
 
     print(campaign_name)
     if db_type == "mongo":
+        import pymongo
         client = pymongo.MongoClient("localhost", 27017)
         db = client.joint_ner_and_md
         runs = db.runs.find({"config.experiment_name": campaign_name})
@@ -58,7 +55,7 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
         dict_to_report = dict(run["config"])
         initial_keys = dict_to_report.keys()
 
-        print initial_keys
+        print(initial_keys)
 
         result_designation_labels = ["MORPH", "NER"]
 
@@ -105,7 +102,8 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
                                                              "use_golden_morpho_analysis_in_word_representation",
                                                              "multilayer",
                                                              "shortcut_connections",
-                                                             "epochs"] if x in dict_to_report] +
+                                                             "epochs",
+                                                             "lang_name"] if x in dict_to_report] +
                         [x for x in dict_to_report.keys() if x not in initial_keys]})
 
     import pandas
@@ -122,7 +120,8 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
                                              "active_models",
                                              "use_golden_morpho_analysis_in_word_representation",
                                              "multilayer",
-                                             "shortcut_connections"])
+                                             "shortcut_connections",
+                                             "lang_name"])
     return df, df_groupedby_hyperparameters.NER_best_test.mean()
 
 
