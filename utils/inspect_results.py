@@ -1,4 +1,3 @@
-
 # coding: utf-8
 from IPython.display import display
 
@@ -8,7 +7,6 @@ import json
 
 
 def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/"):
-
     runs = []
     for run_dir in glob.glob("/".join([logs_filepath, "[0-9]*"])):
         run = {}
@@ -39,7 +37,6 @@ def list_campaigns(db_type):
 
 
 def report_results_of_a_specific_campaign(campaign_name, db_type):
-
     print(campaign_name)
     if db_type == "mongo":
         import pymongo
@@ -97,13 +94,13 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
                 print dict_to_report[result_designation_label + "_to_" + x + "_test"]
 
         configs.append({key: dict_to_report[key] for key in [x for x in ["host",
-                                                             "integration_mode",
-                                                             "active_models",
-                                                             "use_golden_morpho_analysis_in_word_representation",
-                                                             "multilayer",
-                                                             "shortcut_connections",
-                                                             "epochs",
-                                                             "lang_name"] if x in dict_to_report] +
+                                                                         "integration_mode",
+                                                                         "active_models",
+                                                                         "use_golden_morpho_analysis_in_word_representation",
+                                                                         "multilayer",
+                                                                         "shortcut_connections",
+                                                                         "epochs",
+                                                                         "lang_name"] if x in dict_to_report] +
                         [x for x in dict_to_report.keys() if x not in initial_keys]})
 
     import pandas
@@ -117,16 +114,15 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
     display(df)
 
     df_groupedby_hyperparameters = df.groupby(["integration_mode",
-                                             "active_models",
-                                             "use_golden_morpho_analysis_in_word_representation",
-                                             "multilayer",
-                                             "shortcut_connections",
-                                             "lang_name"])
+                                               "active_models",
+                                               "use_golden_morpho_analysis_in_word_representation",
+                                               "multilayer",
+                                               "shortcut_connections",
+                                               "lang_name"])
     return df, df_groupedby_hyperparameters.NER_best_test.mean()
 
 
 if __name__ == "__main__":
-
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -137,6 +133,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    df, df_groupedby_hyperparameter_NER_best_test_mean = report_results_of_a_specific_campaign(args.campaign_name, args.db_type)
-    df.to_csv("./scripts/results-%s.csv" % args.campaign_name)
-    df_groupedby_hyperparameter_NER_best_test_mean.to_csv("./scripts/results-NER_best_test_mean-%s.csv" % args.campaign_name)
+    df, df_groupedby_hyperparameter_NER_best_test_mean = report_results_of_a_specific_campaign(args.campaign_name,
+                                                                                               args.db_type)
+    df.to_csv("./results/results-%s.csv" % args.campaign_name)
+    df_groupedby_hyperparameter_NER_best_test_mean.to_csv(
+        "./results/results-NER_best_test_mean-%s.csv" % args.campaign_name)
