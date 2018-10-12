@@ -37,6 +37,18 @@ def list_campaigns(db_type):
 
 
 def report_results_of_a_specific_campaign(campaign_name, db_type):
+    df = get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type)
+
+    df_groupedby_hyperparameters = df.groupby(["integration_mode",
+                                               "active_models",
+                                               "use_golden_morpho_analysis_in_word_representation",
+                                               "multilayer",
+                                               "shortcut_connections",
+                                               "lang_name"])
+    return df, df_groupedby_hyperparameters.NER_best_test.mean()
+
+
+def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
     print(campaign_name)
     if db_type == "mongo":
         import pymongo
@@ -45,7 +57,6 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
         runs = db.runs.find({"config.experiment_name": campaign_name})
     else:
         runs = find_runs_on_filesystem(campaign_name, logs_filepath=db_type)
-
     configs = []
     for run_idx, run in enumerate(runs):
 
@@ -102,24 +113,14 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
                                                                          "epochs",
                                                                          "lang_name"] if x in dict_to_report] +
                         [x for x in dict_to_report.keys() if x not in initial_keys]})
-
     import pandas
     df = pandas.DataFrame.from_dict(configs)
     print configs
     cols = df.columns.tolist()
-
     # display(df[["host"] +
     #                     [x for x in dict_to_report.keys() if x not in initial_keys]])
-
     display(df)
-
-    df_groupedby_hyperparameters = df.groupby(["integration_mode",
-                                               "active_models",
-                                               "use_golden_morpho_analysis_in_word_representation",
-                                               "multilayer",
-                                               "shortcut_connections",
-                                               "lang_name"])
-    return df, df_groupedby_hyperparameters.NER_best_test.mean()
+    return df
 
 
 if __name__ == "__main__":
@@ -135,6 +136,6 @@ if __name__ == "__main__":
 
     df, df_groupedby_hyperparameter_NER_best_test_mean = report_results_of_a_specific_campaign(args.campaign_name,
                                                                                                args.db_type)
-    df.to_csv("./results/results-%s.csv" % args.campaign_name)
+    df.to_csv("./reports/results-%s.csv" % args.campaign_name)
     df_groupedby_hyperparameter_NER_best_test_mean.to_csv(
-        "./results/results-NER_best_test_mean-%s.csv" % args.campaign_name)
+        "./reports/results-NER_best_test_mean-%s.csv" % args.campaign_name)
