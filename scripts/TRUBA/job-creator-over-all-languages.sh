@@ -12,7 +12,7 @@ max_time=${5:-4-00:00:00}
 debug=${6:-0}
 
 sub_job_id=0
-max_jobs_to_submit=100
+max_jobs_to_submit=1000
 
 # jobs_line_by_line=`${rundir_path}/helper-script-to-run-the-experiment-set-TRUBA.sh ${experiment_name} ${dim}`
 
@@ -31,9 +31,10 @@ bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-T
 	echo '#!/bin/bash' > ${rundir_path}/batch-script-${job_id}.sh
 	echo $line >> ${rundir_path}/batch-script-${job_id}.sh
 
-	sbatch -A ogungor -J ${job_id} -p ${partition_name} -c ${core_per_job} --time=${max_time} --mail-type=END --mail-user=onurgu@boun.edu.tr ${rundir_path}/batch-script-${job_id}.sh
+	RES=$(sbatch -A ogungor -J ${job_id} -p ${partition_name} -c ${core_per_job} --time=${max_time} --mail-type=END --mail-user=onurgu@boun.edu.tr ${rundir_path}/batch-script-${job_id}.sh)
+	SLURM_JOB_ID=${RES##* }
 
-	echo sleeping for 120 seconds to allow time to FileStorageObserver
+	echo SLURM_JOB_ID ${SLURM_JOB_ID} sleeping for 120 seconds to allow time to FileStorageObserver
 	sleep 120
 
 	if [[ sub_job_id -eq max_jobs_to_submit ]]; then

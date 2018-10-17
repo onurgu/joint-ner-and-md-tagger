@@ -15,6 +15,8 @@ def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/"):
                 run["info"] = json.load(f)
             with open(os.path.join(run_dir, "config.json"), "r") as f:
                 run["config"] = json.load(f)
+            with open(os.path.join(run_dir, "run.json"), "r") as f:
+                run["run"] = json.load(f)
             if campaign_name:
                 if run["config"]["experiment_name"] == campaign_name:
                     runs.append(run)
@@ -61,6 +63,12 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
     for run_idx, run in enumerate(runs):
 
         dict_to_report = dict(run["config"])
+        # u'start_time': u'2018-10-08T10:14:06.444095'
+        import datetime
+        dict_to_report.update({run_field_name: datetime.datetime.strptime(run["run"][run_field_name], "%Y-%m-%dT%H:%M:%S.%f")
+                               for run_field_name in ["start_time", "stop_time"]})
+        dict_to_report["duration"] = dict_to_report["stop_time"] - dict_to_report["start_time"]
+
         initial_keys = dict_to_report.keys()
 
         print(initial_keys)
@@ -111,7 +119,10 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
                                                                          "multilayer",
                                                                          "shortcut_connections",
                                                                          "epochs",
-                                                                         "lang_name"] if x in dict_to_report] +
+                                                                         "lang_name",
+                                                                         "start_time",
+                                                                         "stop_time",
+                                                                         "duration"] if x in dict_to_report] +
                         [x for x in dict_to_report.keys() if x not in initial_keys]})
     import pandas
     df = pandas.DataFrame.from_dict(configs)
