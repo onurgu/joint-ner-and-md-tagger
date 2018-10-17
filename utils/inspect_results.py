@@ -65,9 +65,13 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
         dict_to_report = dict(run["config"])
         # u'start_time': u'2018-10-08T10:14:06.444095'
         import datetime
+        if "stop_time" in run["run"]:
+            stop_time_field_name = "stop_time"
+        else:
+            stop_time_field_name = "heartbeat"
         dict_to_report.update({run_field_name: datetime.datetime.strptime(run["run"][run_field_name], "%Y-%m-%dT%H:%M:%S.%f")
-                               for run_field_name in ["start_time", "stop_time"]})
-        dict_to_report["duration"] = dict_to_report["stop_time"] - dict_to_report["start_time"]
+                               for run_field_name in ["start_time", stop_time_field_name]})
+        dict_to_report["duration"] = dict_to_report[stop_time_field_name] - dict_to_report["start_time"]
 
         initial_keys = dict_to_report.keys()
 
