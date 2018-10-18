@@ -19,7 +19,7 @@ max_jobs_to_submit=1000
 
 #echo $jobs_line_by_line | while read line; do
 
-bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ./scripts/TRUBA/configuration-variables.sh ${debug} '''${target_languages}''' | while read line; do
+bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ./scripts/TRUBA/configuration-variables.sh ${debug} "'"${target_languages}"'" | while read line; do
 
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id
@@ -36,6 +36,8 @@ bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-T
 	SLURM_JOB_ID=${RES##* }
 
 	echo SLURM_JOB_ID ${SLURM_JOB_ID} sleeping for 120 seconds to allow time to FileStorageObserver
+	echo ${SLURM_JOB_ID} ${sub_job_id} >> ${rundir_path}/slurm_job_ids.${job_id}.txt
+	echo ${line} >> ${rundir_path}/slurm_job_ids.${job_id}.txt
 	sleep 120
 
 	if [[ sub_job_id -eq max_jobs_to_submit ]]; then
