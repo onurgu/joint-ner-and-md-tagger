@@ -244,6 +244,14 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                                stderr=subprocess.STDOUT)
 
     def record_metric(epoch, label, value):
+        """
+        Each label can have multiple values in an epoch. This is for updates to the metric's value.
+        i.e. metrics calculated before an epoch has finished.
+        :param epoch:
+        :param label:
+        :param value:
+        :return:
+        """
         epoch_str = str(epoch)
         if epoch_str in _run.info[label]:
             _run.info[label][epoch_str].append(value)
@@ -265,6 +273,12 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
                 record_metric(epoch, "%s_dev_f_score" % task_name, best_dev)
                 record_metric(epoch, "%s_test_f_score" % task_name, best_test)
+
+        m = re.match("^Avg. loss over training set: (.+)$", line)
+        if m:
+            avg_loss_over_training_set = float(m.group(1))
+            record_metric(epoch, "avg_loss", avg_loss_over_training_set)
+
 
     for line in iter(process.stdout.readline, ''):
         sys.stdout.write(line)

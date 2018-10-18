@@ -120,6 +120,7 @@ def train(sys_argv):
                     logging.error("BEEP")
 
         print("")
+        print("Avg. loss over training set: {epoch_loss_mean}".format(epoch_loss_mean=np.mean(epoch_costs)))
 
         model.trainer.status()
 
