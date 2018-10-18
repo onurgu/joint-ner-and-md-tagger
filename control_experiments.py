@@ -232,6 +232,8 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         _run.info["%s_dev_f_score" % task_name] = dict()
         _run.info["%s_test_f_score" % task_name] = dict()
 
+    _run.info["avg_loss"] = dict()
+
     _run.info['starting'] = 1
 
     dummy_prefix = ""
