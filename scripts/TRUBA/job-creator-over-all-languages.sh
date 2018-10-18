@@ -10,6 +10,7 @@ core_per_job=${4:-4}
 max_time=${5:-4-00:00:00}
 
 debug=${6:-0}
+target_languages=${7:-czech spanish finnish hungarian turkish}
 
 sub_job_id=0
 max_jobs_to_submit=1000
@@ -18,7 +19,7 @@ max_jobs_to_submit=1000
 
 #echo $jobs_line_by_line | while read line; do
 
-bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ./scripts/TRUBA/configuration-variables.sh ${debug} | while read line; do
+bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ./scripts/TRUBA/configuration-variables.sh ${debug} '''${target_languages}''' | while read line; do
 
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id

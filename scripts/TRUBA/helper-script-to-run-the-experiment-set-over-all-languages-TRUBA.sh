@@ -5,6 +5,7 @@ original_experiment_name=${experiment_name}
 
 configuration_file_path=${3:-./scripts/TRUBA/configuration-variables.sh}
 debug=${4:-0}
+target_languages=${5:-czech spanish finnish hungarian turkish}
 
 if [ -f ${configuration_file_path} ]; then
     source ${configuration_file_path};
@@ -26,7 +27,7 @@ morpho_tag_type=char
 
 for trial in `seq 1 ${n_trials}`; do
 
-    for lang_name in czech spanish finnish hungarian turkish; do
+    for lang_name in ${target_languages}; do
 
         lang_dataset_root=${datasets_root}/${lang_name}
 
