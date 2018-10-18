@@ -6,7 +6,7 @@ import os
 import json
 
 
-def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/"):
+def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/", attach_rundirs=False):
     runs = []
     for run_dir in glob.glob("/".join([logs_filepath, "[0-9]*"])):
         run = {}
@@ -17,6 +17,10 @@ def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/"):
                 run["config"] = json.load(f)
             with open(os.path.join(run_dir, "run.json"), "r") as f:
                 run["run"] = json.load(f)
+
+            if attach_rundirs:
+                run["rundir"] = run_dir
+
             if campaign_name:
                 if run["config"]["experiment_name"] == campaign_name:
                     runs.append(run)
@@ -143,14 +147,24 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("--command", choices=["create_report", "grep_logdirs"], required=True)
+
     parser.add_argument("--campaign_name", default="section1-all-20171013-01")
 
     parser.add_argument("--db_type", default="mongo")
 
     args = parser.parse_args()
 
-    df, df_groupedby_hyperparameter_NER_best_test_mean = report_results_of_a_specific_campaign(args.campaign_name,
-                                                                                               args.db_type)
-    df.to_csv("./reports/results-%s.csv" % args.campaign_name)
-    df_groupedby_hyperparameter_NER_best_test_mean.to_csv(
-        "./reports/results-NER_best_test_mean-%s.csv" % args.campaign_name)
+    if args.command == "create_report":
+
+        df, df_groupedby_hyperparameter_NER_best_test_mean = report_results_of_a_specific_campaign(args.campaign_name,
+                                                                                                   args.db_type)
+        df.to_csv("./reports/results-%s.csv" % args.campaign_name)
+        df_groupedby_hyperparameter_NER_best_test_mean.to_csv(
+            "./reports/results-NER_best_test_mean-%s.csv" % args.campaign_name)
+
+    elif args.command == "grep_logdirs":
+        runs = find_runs_on_filesystem(args.campaign_name, logs_filepath=args.db_type, attach_rundirs=True)
+        for run in runs:
+            print(run["run_dir"])
+
