@@ -274,9 +274,10 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                 record_metric(epoch, "%s_dev_f_score" % task_name, best_dev)
                 record_metric(epoch, "%s_test_f_score" % task_name, best_test)
 
-        m = re.match("^Avg. loss over training set: (.+)$", line)
+        m = re.match("^Epoch (\d+) Avg. loss over training set: (.+)$", line)
         if m:
-            avg_loss_over_training_set = float(m.group(1))
+            epoch = int(m.group(1))
+            avg_loss_over_training_set = float(m.group(2))
             record_metric(epoch, "avg_loss", avg_loss_over_training_set)
 
 
