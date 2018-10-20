@@ -2,10 +2,11 @@ import argparse
 
 
 try:
-    import configparser
+    # Python 2
+    import ConfigParser
     cp = ConfigParser
 except ImportError as e:
-    print(e)
+    # print(e)
     import configparser
     cp = configparser
 
