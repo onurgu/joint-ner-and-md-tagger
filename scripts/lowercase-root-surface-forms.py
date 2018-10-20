@@ -5,18 +5,18 @@ import sys
 
 CHARMAP = {
     "to_upper": {
-        u"ı": u"I",
-        u"i": u"İ",
+        "ı": "I",
+        "i": "İ",
     },
     "to_lower": {
-        u"I": u"ı",
-        u"İ": u"i",
+        "I": "ı",
+        "İ": "i",
     }
 }
 
 
 def lower(s):
-    for key, value in CHARMAP.get("to_lower").items():
+    for key, value in list(CHARMAP.get("to_lower").items()):
         s = s.replace(key, value)
 
     return s.lower()
@@ -32,5 +32,5 @@ while line:
             _tags = tokens[idx].split("+")
             _tags[0] = lower(_tags[0])
             tokens[idx] = "+".join(_tags)
-    print " ".join(tokens).encode("utf8")
+    print(" ".join(tokens).encode("utf8"))
     line = sys.stdin.readline()

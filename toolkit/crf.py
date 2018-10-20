@@ -11,7 +11,7 @@ class CRF():
     def __init__(self, model, id_to_tag):
 
         self.id_to_tag = id_to_tag
-        self.tag_to_id = {tag: id for id, tag in id_to_tag.items()}
+        self.tag_to_id = {tag: id for id, tag in list(id_to_tag.items())}
         self.n_tags = len(self.id_to_tag)
         self.b_id = len(self.tag_to_id)
         self.e_id = len(self.tag_to_id) + 1

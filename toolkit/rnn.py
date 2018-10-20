@@ -32,7 +32,7 @@ class BiLSTMMultiLayeredWithShortcutConnections(BiRNNBuilder):
         f = rnn_builder_factory(1, input_dim, hidden_dim/2, model)
         b = rnn_builder_factory(1, input_dim, hidden_dim/2, model)
         self.builder_layers.append((f,b))
-        for _ in xrange(num_layers-1):
+        for _ in range(num_layers-1):
             if self.shortcut_connections:
                 current_level_input_dim = input_dim+hidden_dim
             else:

@@ -212,19 +212,19 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
     # tagger_root = "/media/storage/genie/turkish-ner/code/tagger"
 
-    print _run
-    print _run.info
+    print(_run)
+    print(_run.info)
 
-    print subprocess.check_output(["id"])
-    print subprocess.check_output(["pwd"])
+    print(subprocess.check_output(["id"]))
+    print(subprocess.check_output(["pwd"]))
 
     opts = read_args(args_as_a_list=commandline_args.split(" "))
-    print opts
+    print(opts)
     parameters = form_parameters_dict(opts)
-    print parameters
+    print(parameters)
     # model_path = get_name(parameters)
     model_path = get_model_subpath(parameters)
-    print model_path
+    print(model_path)
 
     task_names = ["NER", "MORPH"]
 
@@ -240,7 +240,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
     full_commandline = dummy_prefix + execution_part + commandline_args
 
-    print full_commandline
+    print(full_commandline)
     process = subprocess.Popen(full_commandline.split(" "),
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)

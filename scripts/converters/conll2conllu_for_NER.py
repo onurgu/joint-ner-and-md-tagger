@@ -21,6 +21,6 @@ while line:
 
         conllu_tokens[-1] = json.dumps({"NER_TAG": tokens[-1]}, separators=(',', ':'))
 
-        print("\t".join(conllu_tokens))
+        print(("\t".join(conllu_tokens)))
         token_index += 1
     line = sys.stdin.readline()

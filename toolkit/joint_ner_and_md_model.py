@@ -6,7 +6,7 @@ import dynet
 from dynet import Model, BiRNNBuilder, CoupledLSTMBuilder
 
 import codecs
-import cPickle
+import pickle
 
 import logging
 
@@ -67,10 +67,10 @@ class MainTaggerModel(object):
                 os.makedirs(self.model_path)
             # Save the parameters to disk
             with open(self.parameters_path, 'wb') as f:
-                cPickle.dump(parameters, f)
+                pickle.dump(parameters, f)
             # Save the command line parameters to disk
             with open(self.opts_path, 'wb') as f:
-                cPickle.dump(opts, f)
+                pickle.dump(opts, f)
         else:
             assert parameters is None and opts is None and models_path and model_path and model_epoch_dir_path
             # MainTaggerModel location
@@ -80,10 +80,10 @@ class MainTaggerModel(object):
             self.opts_path = os.path.join(model_path, 'opts.pkl')
             # Load the parameters and the mappings from disk
             with open(self.parameters_path, 'rb') as f:
-                self.parameters = cPickle.load(f)
+                self.parameters = pickle.load(f)
             # Read opts from the saved file
             with open(self.opts_path, 'rb') as f:
-                self.opts = cPickle.load(f)
+                self.opts = pickle.load(f)
             self.reload_mappings()
 
         self.components = {}
@@ -98,7 +98,7 @@ class MainTaggerModel(object):
         self.id_to_morpho_tag = id_to_morpho_tag
 
         if os.path.exists(self.mappings_path) and not self.overwrite_mappings:
-            print "Aborting. A previous mappings file exists. You should explicitly state to overwrite the mappings file"
+            print("Aborting. A previous mappings file exists. You should explicitly state to overwrite the mappings file")
             sys.exit(1)
         else:
             with open(self.mappings_path, 'wb') as f:
@@ -108,14 +108,14 @@ class MainTaggerModel(object):
                     'id_to_tag': self.id_to_tag,
                     'id_to_morpho_tag': self.id_to_morpho_tag,
                 }
-                cPickle.dump(mappings, f)
+                pickle.dump(mappings, f)
 
     def reload_mappings(self):
         """
         Load mappings from disk.
         """
         with open(self.mappings_path, 'rb') as f:
-            mappings = cPickle.load(f)
+            mappings = pickle.load(f)
         self.id_to_word = mappings['id_to_word']
         self.id_to_char = mappings['id_to_char']
         self.id_to_tag = mappings['id_to_tag']
@@ -175,7 +175,7 @@ class MainTaggerModel(object):
             path = model_epoch_dir_path
         else:
             path = os.path.join(path, "epoch-%08d" % 0)
-        print path
+        print(path)
         assert os.path.exists(path)
 
         self.saver.restore(os.path.join(path, "model.ckpt"))
@@ -192,7 +192,7 @@ class MainTaggerModel(object):
                 assert False, "integration_mode should be set to zero when active_models == 1"
 
             if self.parameters['debug'] == 1:
-                print("str_words", sentence["str_words"])
+                print(("str_words", sentence["str_words"]))
             morph_analysis_representations, morph_analysis_scores = \
                 self.get_morph_analysis_representations_and_scores(sentence,
                                                                    context_representations_for_md_loss)
@@ -200,7 +200,7 @@ class MainTaggerModel(object):
             selected_morph_analysis_representations = \
                 self.disambiguate_morph_analyzes(morph_analysis_scores)
 
-            if 'golden_morph_analysis_indices' in sentence.keys():
+            if 'golden_morph_analysis_indices' in list(sentence.keys()):
                 md_loss = dynet.esum(
                     [dynet.pickneglogsoftmax(morph_analysis_scores_for_word, golden_idx)
                      for golden_idx, morph_analysis_scores_for_word in
@@ -242,8 +242,8 @@ class MainTaggerModel(object):
             #return dynet.tanh(dynet.sum_cols(dynet.reshape(context, (int(self.sentence_level_bilstm_contexts_length/2), 2))))
 
         if self.parameters['debug'] == 1:
-            print("morph_analysis_representations", morph_analysis_representations)
-            print("context_representations", context_representations)
+            print(("morph_analysis_representations", morph_analysis_representations))
+            print(("context_representations", context_representations))
 
         morph_analysis_scores = \
             [dynet.softmax(
@@ -339,7 +339,7 @@ class MainTaggerModel(object):
             new_weights = scale * np.random.uniform(-1.0, 1.0, (n_words, word_dim))
             # new_weights = np.zeros([n_words, word_dim], dtype='float32')
             if pre_emb and training:
-                print 'Loading pretrained embeddings from %s...' % pre_emb
+                print('Loading pretrained embeddings from %s...' % pre_emb)
                 pretrained = {}
                 emb_invalid = 0
                 for i, line in enumerate(codecs.open(pre_emb, 'r', 'utf-8')):
@@ -351,12 +351,12 @@ class MainTaggerModel(object):
                     else:
                         emb_invalid += 1
                 if emb_invalid > 0:
-                    print 'WARNING: %i invalid lines' % emb_invalid
+                    print('WARNING: %i invalid lines' % emb_invalid)
                 c_found = 0
                 c_lower = 0
                 c_zeros = 0
                 # Lookup table initialization
-                for i in xrange(n_words):
+                for i in range(n_words):
                     raw_word = self.id_to_word[i]
                     if raw_word != "<UNK>":
                         # word = raw_word.split(" ")[1]
@@ -376,16 +376,16 @@ class MainTaggerModel(object):
                         ]
                         c_zeros += 1
 
-                print 'Loaded %i pretrained embeddings.' % len(pretrained)
-                print ('%i / %i (%.4f%%) words have been initialized with '
+                print('Loaded %i pretrained embeddings.' % len(pretrained))
+                print(('%i / %i (%.4f%%) words have been initialized with '
                        'pretrained embeddings.') % (
                           c_found + c_lower + c_zeros, n_words,
                           100. * (c_found + c_lower + c_zeros) / n_words
-                      )
-                print ('%i found directly, %i after lowercasing, '
+                      ))
+                print(('%i found directly, %i after lowercasing, '
                        '%i after lowercasing + zero.') % (
                           c_found, c_lower, c_zeros
-                      )
+                      ))
             word_representation_dim += word_dim
             self.word_embeddings = self.model.add_lookup_parameters((n_words, word_dim),
                                                                     init=dynet.NumpyInitializer(
@@ -569,9 +569,9 @@ class MainTaggerModel(object):
                 #     self.char_lstm_layer.transduce(char_embeddings_for_word)[-1])
                 char_representations.append(self.char_lstm_layer.get_representation_concat(char_embeddings_for_word)[0])
             except IndexError as e:
-                print sentence
-                print char_embeddings_for_word
-                print e
+                print(sentence)
+                print(char_embeddings_for_word)
+                print(e)
         return char_representations
 
     def get_sentence_level_bilstm_outputs(self,
@@ -768,8 +768,8 @@ class MainTaggerModel(object):
                 for root_char_sequence in root_as_char_sequences_for_word]
                 for root_as_char_sequences_for_word in sentence['morpho_analyzes_roots']]
         except IndexError as e:
-            print e
-            print root_char_sequence
+            print(e)
+            print(root_char_sequence)
 
         try:
             morpho_tag_sequence_representations = \
@@ -778,8 +778,8 @@ class MainTaggerModel(object):
                 for morpho_tag_sequence in morpho_tag_sequences_for_word]
                 for morpho_tag_sequences_for_word in sentence['morpho_analyzes_tags']]
         except IndexError as e:
-            print e
-            print morpho_tag_sequence
+            print(e)
+            print(morpho_tag_sequence)
 
         tyed_representations_for_every_analysis = \
             [[self.f_tying_method(root_representation, morpho_tag_representation)

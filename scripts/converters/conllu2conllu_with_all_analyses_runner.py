@@ -8,7 +8,7 @@ import subprocess
 script_path = os.path.join(os.getcwd(), os.path.dirname(sys.argv[0]))
 
 try:
-    import ConfigParser
+    import configparser
     cp = ConfigParser
 except ImportError as e:
     print(e)
@@ -94,5 +94,5 @@ for lang_name in lang_names:
                             conllu_line_with_ner_tags, conllu_line_with_md_tags = \
                                 [f.readline() for f in [input_conllu_f, input_conllu_with_md_tags_f]]
 
-            except ConfigParser.NoOptionError as e:
+            except configparser.NoOptionError as e:
                 print(e)

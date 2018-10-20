@@ -1,8 +1,8 @@
 """Evaluation
 
 """
-from __future__ import absolute_import
-from __future__ import division
+
+
 
 from collections import defaultdict as dd
 import logging
@@ -48,48 +48,48 @@ def eval_with_specific_model(model,
     # total_disamb_targets = {dataset_label: 0 for dataset_label in dataset_labels}
 
     total_correct_disambs = {label: {purpose: 0
-                                     for purpose in datasets_to_be_predicted[label].keys()}
-                             for label in datasets_to_be_predicted.keys()}
+                                     for purpose in list(datasets_to_be_predicted[label].keys())}
+                             for label in list(datasets_to_be_predicted.keys())}
 
     total_disamb_targets = {label: {purpose: 0
-                                     for purpose in datasets_to_be_predicted[label].keys()}
-                             for label in datasets_to_be_predicted.keys()}
+                                     for purpose in list(datasets_to_be_predicted[label].keys())}
+                             for label in list(datasets_to_be_predicted.keys())}
 
     if active_models in [1, 2, 3]:
 
         detailed_correct_disambs = {label: {purpose: dd(int)
-                                        for purpose in datasets_to_be_predicted[label].keys()}
-                                for label in datasets_to_be_predicted.keys()}
+                                        for purpose in list(datasets_to_be_predicted[label].keys())}
+                                for label in list(datasets_to_be_predicted.keys())}
 
         detailed_total_target_disambs = {label: {purpose: dd(int)
-                                        for purpose in datasets_to_be_predicted[label].keys()}
-                                for label in datasets_to_be_predicted.keys()}
+                                        for purpose in list(datasets_to_be_predicted[label].keys())}
+                                for label in list(datasets_to_be_predicted.keys())}
 
     datasets_with_predicted_labels = {label: {purpose: {}
-                                        for purpose in datasets_to_be_predicted[label].keys()}
-                                for label in datasets_to_be_predicted.keys()}
+                                        for purpose in list(datasets_to_be_predicted[label].keys())}
+                                for label in list(datasets_to_be_predicted.keys())}
 
     # for dataset_label, dataset_as_list in datasets_to_be_predicted:
-    for label in datasets_to_be_predicted.keys():
-        for purpose in datasets_to_be_predicted[label].keys():
+    for label in list(datasets_to_be_predicted.keys()):
+        for purpose in list(datasets_to_be_predicted[label].keys()):
 
             dataset_as_list = datasets_to_be_predicted[label][purpose]
 
             if len(dataset_as_list) == 0:
-                print "Skipping to evaluate %s dataset as it is empty" % (label+"_"+purpose)
+                print("Skipping to evaluate %s dataset as it is empty" % (label+"_"+purpose))
                 total_correct_disambs[label][purpose] = -1
                 total_disamb_targets[label][purpose] = 1
                 continue
 
-            print "Starting to evaluate %s dataset" % (label+"_"+purpose)
+            print("Starting to evaluate %s dataset" % (label+"_"+purpose))
             predictions = []
             n_tags = len(id_to_tag)
             count = np.zeros((n_tags, n_tags), dtype=np.int32)
 
             n_batches = int(math.ceil(float(len(dataset_as_list)) / batch_size))
 
-            print "dataset_label: %s" % (label+"_"+purpose)
-            print ("n_batches: %d" % n_batches)
+            print("dataset_label: %s" % (label+"_"+purpose))
+            print(("n_batches: %d" % n_batches))
 
             for batch_idx in range(n_batches):
                 # print("batch_idx: %d" % batch_idx)
@@ -154,9 +154,9 @@ def eval_with_specific_model(model,
                 with codecs.open(output_path, 'w', 'utf8') as f:
                     f.write("\n".join(predictions))
 
-                print "Evaluating the %s dataset with conlleval script" % (label + "_" + purpose)
+                print("Evaluating the %s dataset with conlleval script" % (label + "_" + purpose))
                 command_string = "%s < %s > %s" % (eval_script, output_path, scores_path)
-                print command_string
+                print(command_string)
                 # os.system(command_string)
                 # sys.exit(0)
                 with codecs.open(output_path, "r", encoding="utf-8") as output_path_f:
@@ -167,25 +167,25 @@ def eval_with_specific_model(model,
                     # CoNLL evaluation results
                     # eval_lines = [l.rstrip() for l in codecs.open(scores_path, 'r', 'utf8')]
                     for line in eval_lines:
-                        print line
+                        print(line)
                     f_scores["ner"][purpose] = float(eval_lines[1].split(" ")[-1])
 
             if active_models in [1, 2, 3]:
-                for n_possible_analyzes in map(int, detailed_correct_disambs[label][purpose].keys()):
-                    print "%s %d %d/%d" % ((label + "_" + purpose),
+                for n_possible_analyzes in map(int, list(detailed_correct_disambs[label][purpose].keys())):
+                    print("%s %d %d/%d" % ((label + "_" + purpose),
                                            n_possible_analyzes,
                                            detailed_correct_disambs[label][purpose][n_possible_analyzes],
-                                           detailed_total_target_disambs[label][purpose][n_possible_analyzes])
+                                           detailed_total_target_disambs[label][purpose][n_possible_analyzes]))
 
             if return_datasets_with_predicted_labels:
                 datasets_with_predicted_labels[label][purpose] = predictions
 
-    disambiguation_accuracies = {label: {} for label in datasets_to_be_predicted.keys()}
+    disambiguation_accuracies = {label: {} for label in list(datasets_to_be_predicted.keys())}
     if active_models in [0]:
         pass
     else:
-        for label in datasets_to_be_predicted.keys():
-            for purpose in datasets_to_be_predicted[label].keys():
+        for label in list(datasets_to_be_predicted.keys()):
+            for purpose in list(datasets_to_be_predicted[label].keys()):
                 if total_disamb_targets[label][purpose] == 0:
                     total_correct_disambs[label][purpose] = -1
                     total_disamb_targets[label][purpose] = 1
@@ -217,8 +217,8 @@ def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_pat
                                                                        model,
                                                                        return_result=False)
 
-    print f_scores
-    print morph_accuracies
+    print(f_scores)
+    print(morph_accuracies)
 
 
 def predict_sentences_given_model(sentences_string, model):

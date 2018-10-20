@@ -88,7 +88,7 @@ def update_tag_scheme(sentences, tag_scheme, file_format="conll"):
         # Check that tags are given in the IOB format
         if not iob2(tags):
             s_str = '\n'.join(' '.join(w) for w in s)
-            print s_str.encode("utf8")
+            print(s_str.encode("utf8"))
             raise Exception('Sentences should be given in IOB format! ' +
                             'Please check sentence %i:\n%s' % (i, s_str))
         if tag_scheme == 'iob':
@@ -129,9 +129,9 @@ def word_mapping(sentences, lower, file_format="conll"):
     dico = create_dico(words)
     dico['<UNK>'] = 10000000
     word_to_id, id_to_word = create_mapping(dico)
-    print "Found %i unique words (%i in total)" % (
+    print("Found %i unique words (%i in total)" % (
         len(dico), sum(len(x) for x in words)
-    )
+    ))
     return dico, word_to_id, id_to_word
 
 
@@ -151,7 +151,7 @@ def char_mapping(sentences, file_format="conll"):
     chars.append("*")
     dico = create_dico(chars)
     char_to_id, id_to_char = create_mapping(dico)
-    print "Found %i unique characters" % len(dico)
+    print("Found %i unique characters" % len(dico))
     return dico, char_to_id, id_to_char
 
 
@@ -166,7 +166,7 @@ def tag_mapping(sentences, file_format="conll"):
         tags = [[extract_correct_ner_tag_from_conllu(word) for word in s] for s in sentences]
     dico = create_dico(tags)
     tag_to_id, id_to_tag = create_mapping(dico)
-    print "Found %i unique named entity tags" % len(dico)
+    print("Found %i unique named entity tags" % len(dico))
     return dico, tag_to_id, id_to_tag
 
 
@@ -234,8 +234,8 @@ def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_i
     dico = create_dico(morpho_tags)
     # print dico
     morpho_tag_to_id, id_to_morpho_tag = create_mapping(dico)
-    print morpho_tag_to_id
-    print "Found %i unique morpho tags" % len(dico)
+    print(morpho_tag_to_id)
+    print("Found %i unique morpho tags" % len(dico))
     return dico, morpho_tag_to_id, id_to_morpho_tag
 
 
@@ -318,7 +318,7 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
 
 def contains_golden_label(word, type):
     misc_dict = load_MISC_column_contents(word[9])
-    return type in misc_dict.keys()
+    return type in list(misc_dict.keys())
 
 
 def extract_specific_single_field_content_from_conllu(word, field_name):
@@ -410,7 +410,7 @@ def prepare_sentence(str_words, word_to_id, char_to_id, lower=False):
 
 
 def turkish_lower(s):
-    return s.replace(u"IİŞÜĞÖÇ", u"ıişüğöç")
+    return s.replace("IİŞÜĞÖÇ", "ıişüğöç")
 
 
 def prepare_dataset(sentences,
@@ -525,10 +525,10 @@ def prepare_dataset(sentences,
                     all_analyses[i] = []
 
         if len(all_analyses) > 0 and len(all_analyses[0]) == 0:
-            print "ERROR IN ALL_ANALYSES"
+            print("ERROR IN ALL_ANALYSES")
 
         # for now we ignore different schemes we did in previous morph. tag parses.
-        morph_analyses_tags = [[map(f_morpho_tag_to_id, list(morpho_tag_separator.join(analysis.split(morpho_tag_separator)[1:]))) \
+        morph_analyses_tags = [[list(map(f_morpho_tag_to_id, list(morpho_tag_separator.join(analysis.split(morpho_tag_separator)[1:])))) \
                                     if analysis.split(morpho_tag_separator)[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
                                 for analysis in analyses] for analyses in all_analyses]
 
@@ -538,7 +538,7 @@ def prepare_dataset(sentences,
             else:
                 return char_to_id['*']
 
-        morph_analyses_roots = [[map(f_char_to_id, list(analysis.split(morpho_tag_separator)[0])) \
+        morph_analyses_roots = [[list(map(f_char_to_id, list(analysis.split(morpho_tag_separator)[0]))) \
                                      if list(analysis.split(morpho_tag_separator)[0]) else [char_to_id[morpho_tag_separator]]
                                 for analysis in analyses] for analyses in all_analyses]
 
@@ -546,7 +546,7 @@ def prepare_dataset(sentences,
         # morph_analyzes_from_FST_unprocessed = [w[2:-1] for w in s]
 
         def remove_Prop_and_lower(s):
-            return turkish_lower(s.replace(u"+Prop", ""))
+            return turkish_lower(s.replace("+Prop", ""))
 
         golden_analysis_indices = []
         if file_format == "conll" or (file_format == "conllu"):
@@ -566,7 +566,7 @@ def prepare_dataset(sentences,
                     if not found:
                         try:
                             golden_analysis_idx = \
-                                map(remove_Prop_and_lower, all_analyses[w_idx])\
+                                list(map(remove_Prop_and_lower, all_analyses[w_idx]))\
                                     .index(remove_Prop_and_lower(correct_analyses[w_idx]))
                             found = True
                         except ValueError as e:
@@ -636,10 +636,10 @@ def prepare_dataset(sentences,
     n_unique_words = len(n_unique_words)
 
     n_buckets = min([9, len(sentences)])
-    print "n_sentences: %d" % len(sentences)
+    print("n_sentences: %d" % len(sentences))
     n_samples_to_be_bucketed = len(sentences)/n_buckets
 
-    print "n_samples_to_be_binned: %d" % n_samples_to_be_bucketed
+    print("n_samples_to_be_binned: %d" % n_samples_to_be_bucketed)
 
     buckets = []
     for bin_idx in range(n_buckets+1):
@@ -660,7 +660,7 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
     to the dictionary, otherwise, we only add the words that are given by
     `words` (typically the words in the development and test sets.)
     """
-    print 'Loading pretrained embeddings from %s...' % ext_emb_path
+    print('Loading pretrained embeddings from %s...' % ext_emb_path)
     assert os.path.isfile(ext_emb_path)
 
     # Load pretrained embeddings from file
@@ -705,13 +705,13 @@ def _prepare_datasets(opts, parameters, for_training=True):
 
     # Load sentences
     if for_training:
-        for label in training_sets.keys():
+        for label in list(training_sets.keys()):
             _train_sentences, max_sentence_lengths['train'], max_word_lengths['train'] = \
                 load_sentences(opts_dict[label+"_train_file"], zeros, parameters['file_format'])
             update_tag_scheme(_train_sentences, tag_scheme, file_format=parameters['file_format'])
             training_sets[label]['train'] = _train_sentences
 
-    for label in training_sets.keys():
+    for label in list(training_sets.keys()):
         for purpose in ["dev", "test"]:
             if os.path.exists(opts_dict[label+"_"+purpose+"_file"]):
                 _dev_sentences, max_sentence_lengths[purpose], max_word_lengths[purpose] = \
@@ -805,7 +805,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                                                              file_format=parameters['file_format'])
 
     if opts.overwrite_mappings and for_training:
-        print 'Saving the mappings to disk...'
+        print('Saving the mappings to disk...')
         model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
 
     data_dict = {"ner": {}, "md": {}}
@@ -827,7 +827,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                                         morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else ud_morpho_tag_separator))
 
     for label in ["ner", "md"]:
-        print label
+        print(label)
         _, stats_dict[label]["test"], unique_words_dict[label]["test"], data_dict[label]["test"] = \
             prepare_dataset(
                 training_sets[label]["test"],
@@ -850,7 +850,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                     ("shortest sentences", [min([x[0] for x in stats_dict[label][purpose]]) for purpose in purposes if purpose in stats_dict[label]])
                                 ]:
                 part2 = " " + object_name + " in " + part2a + "."
-                print((part1 + part2).format(*values_list))
+                print(((part1 + part2).format(*values_list)))
 
             for i, stats_label in [[2,
                                     'char',
@@ -864,7 +864,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                      "min. {} lengths".format(stats_label)],
                 ]:
                     part2 = " " + stats_label_determiner + " in " + part2a + "."
-                    print((part1 + part2).format(*values_list))
+                    print(((part1 + part2).format(*values_list)))
 
     else:
         for label in ["ner", "md"]:
@@ -880,7 +880,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                      ("shortest sentences", [min([x[0] for x in stats_dict[label][purpose]]) for purpose in purposes if purpose in stats_dict[label]])
                      ]:
                 part2 = " " + object_name + " in " + part2a + "."
-                print((part1 + part2).format(*values_list))
+                print(((part1 + part2).format(*values_list)))
 
             for i, stats_label in [[2,
                                     'char',
@@ -894,10 +894,10 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                      "min. {} lengths".format(stats_label)],
                 ]:
                     part2 = " " + stats_label_determiner + " in " + part2a + "."
-                    print((part1 + part2).format(*values_list))
+                    print(((part1 + part2).format(*values_list)))
 
-    print "Max. sentence lengths: %s" % max_sentence_lengths
-    print "Max. char lengths: %s" % max_word_lengths
+    print("Max. sentence lengths: %s" % max_sentence_lengths)
+    print("Max. char lengths: %s" % max_word_lengths)
 
     if for_training:
         triple_list = []
@@ -932,20 +932,20 @@ def extract_mapping_dictionaries_from_model(model):
     # words
     # dico_words, word_to_id, id_to_word
     id_to_word = dict(model.id_to_word)
-    word_to_id = {word: word_id for word_id, word in id_to_word.items()}
+    word_to_id = {word: word_id for word_id, word in list(id_to_word.items())}
     # id_to_word[10000000] = "<UNK>"
     # word_to_id["<UNK>"] = 10000000
     # chars
     id_to_char = dict(model.id_to_char)
-    char_to_id = {char: char_id for char_id, char in id_to_char.items()}
+    char_to_id = {char: char_id for char_id, char in list(id_to_char.items())}
     # tags
     id_to_tag = dict(model.id_to_tag)
-    print id_to_tag
-    tag_to_id = {tag: tag_id for tag_id, tag in id_to_tag.items()}
-    print tag_to_id
+    print(id_to_tag)
+    tag_to_id = {tag: tag_id for tag_id, tag in list(id_to_tag.items())}
+    print(tag_to_id)
     # morpho_tags
     id_to_morpho_tag = dict(model.id_to_morpho_tag)
-    morpho_tag_to_id = {morpho_tag: morpho_tag_id for morpho_tag_id, morpho_tag in id_to_morpho_tag.items()}
+    morpho_tag_to_id = {morpho_tag: morpho_tag_id for morpho_tag_id, morpho_tag in list(id_to_morpho_tag.items())}
     return char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, morpho_tag_to_id, tag_to_id, word_to_id
 
 
@@ -955,7 +955,7 @@ def calculate_global_maxes(max_sentence_lengths, max_word_lengths):
     global_max_sentence_length = 0
     global_max_char_length = 0
     for i, d in enumerate([max_sentence_lengths, max_word_lengths]):
-        for label in d.keys():
+        for label in list(d.keys()):
             if i == 0:
                 if d[label] > global_max_sentence_length:
                     global_max_sentence_length = d[label]

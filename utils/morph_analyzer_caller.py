@@ -62,7 +62,7 @@ def get_morph_analyzes(line, lang="turkish"):
     :param line: a sentence on a line (untokenized)
     :return:
     """
-    if type(line) == unicode:
+    if type(line) == str:
         tokens = tokenizer.tokenize(line)
     else:
         tokens = tokenizer.tokenize(line.decode("utf8"))
@@ -71,7 +71,7 @@ def get_morph_analyzes(line, lang="turkish"):
         for token in tokens:
             f.write(token.encode("iso-8859-9") + "\n")
     os.close(fd)
-    print f_path
+    print(f_path)
     with codecs.open(f_path, "r", encoding="iso-8859-9") as f, open(os.devnull, "w") as devnull:
         # print f.readlines()
         string_output = subprocess.check_output(analyzer_command[lang],

@@ -5,18 +5,18 @@ import sys
 
 CHARMAP = {
     "to_upper": {
-        u"ı": u"I",
-        u"i": u"İ",
+        "ı": "I",
+        "i": "İ",
     },
     "to_lower": {
-        u"I": u"ı",
-        u"İ": u"i",
+        "I": "ı",
+        "İ": "i",
     }
 }
 
 
 def lower(s):
-    for key, value in CHARMAP.get("to_lower").items():
+    for key, value in list(CHARMAP.get("to_lower").items()):
         s = s.replace(key, value)
 
     return s.lower()
@@ -24,5 +24,5 @@ def lower(s):
 line = sys.stdin.readline()
 
 while line:
-    print lower(line.decode("utf8").strip())
+    print(lower(line.decode("utf8").strip()))
     line = sys.stdin.readline()

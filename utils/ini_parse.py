@@ -2,7 +2,7 @@ import argparse
 
 
 try:
-    import ConfigParser
+    import configparser
     cp = ConfigParser
 except ImportError as e:
     print(e)
@@ -44,8 +44,8 @@ for query in args.query:
 
         # print(dataset_filepath)
         result_str.append(dataset_filepath)
-    except ConfigParser.NoOptionError as e:
+    except configparser.NoOptionError as e:
         pass
 
-print(" ".join(result_str))
+print((" ".join(result_str)))
 # print(args)

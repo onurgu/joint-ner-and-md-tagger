@@ -43,9 +43,9 @@ class DisambiguationHandler(tornado.web.RequestHandler):
     def post(self):
 
         self.add_header("Access-Control-Allow-Origin", "*")
-        line = self.get_argument("single_line_sentence", default=u"Dünyaya hoş geldiniz.")
+        line = self.get_argument("single_line_sentence", default="Dünyaya hoş geldiniz.")
         # print type(line)
-        print(line.encode("utf8"))
+        print((line.encode("utf8")))
 
         line = line.strip()
         self.write(DisambiguationHandler.disambiguate_line(line))

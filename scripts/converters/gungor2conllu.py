@@ -28,6 +28,6 @@ while line:
 
         conllu_tokens[-1] = json.dumps(json_dict, separators=(',', ':'))
 
-        print("\t".join(conllu_tokens))
+        print(("\t".join(conllu_tokens)))
         token_index += 1
     line = sys.stdin.readline()

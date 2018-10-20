@@ -77,26 +77,26 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
                                for run_field_name in ["start_time", stop_time_field_name]})
         dict_to_report["duration"] = dict_to_report[stop_time_field_name] - dict_to_report["start_time"]
 
-        initial_keys = dict_to_report.keys()
+        initial_keys = list(dict_to_report.keys())
 
         print(initial_keys)
 
         result_designation_labels = ["MORPH", "NER"]
 
-        dict_to_report["epochs"] = max([len(run["info"][label].keys())
+        dict_to_report["epochs"] = max([len(list(run["info"][label].keys()))
                                         for label in ["NER_dev_f_score", "MORPH_dev_f_score"]])
 
         for result_designation_label in result_designation_labels:
 
-            print "result_designation_label: ", result_designation_label
+            print("result_designation_label: ", result_designation_label)
 
             best_performances = run["info"][result_designation_label + "_dev_f_score"]
-            print best_performances
+            print(best_performances)
             best_dev_result_for_this_run = 0
             best_test_result_for_this_run = 0
             epoch_id_of_the_best_dev_result = -1
             # display(run["config"])
-            for epoch in sorted([int(k) for k in best_performances.keys()]):
+            for epoch in sorted([int(k) for k in list(best_performances.keys())]):
                 # if result_designation_label != "NER":
                 #     corrected_epoch = epoch + 1
                 epoch_max = max(best_performances[str(epoch)])
@@ -113,12 +113,12 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
 
             for x in result_designation_labels:
                 # if x != result_designation_label:
-                print "x: ", x
-                print "epoch_id_of_the_best_dev_result: ", epoch_id_of_the_best_dev_result
+                print("x: ", x)
+                print("epoch_id_of_the_best_dev_result: ", epoch_id_of_the_best_dev_result)
                 dict_to_report[result_designation_label + "_to_" + x + "_test"] = \
                     max(run["info"][x + "_test_f_score"][str(epoch_id_of_the_best_dev_result)]) \
-                        if str(epoch_id_of_the_best_dev_result) in run["info"][x + "_test_f_score"].keys() else -1
-                print dict_to_report[result_designation_label + "_to_" + x + "_test"]
+                        if str(epoch_id_of_the_best_dev_result) in list(run["info"][x + "_test_f_score"].keys()) else -1
+                print(dict_to_report[result_designation_label + "_to_" + x + "_test"])
 
         configs.append({key: dict_to_report[key] for key in [x for x in ["host",
                                                                          "integration_mode",
@@ -131,15 +131,18 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
                                                                          "start_time",
                                                                          "stop_time",
                                                                          "duration"] if x in dict_to_report] +
-                        [x for x in dict_to_report.keys() if x not in initial_keys]})
+                        [x for x in list(dict_to_report.keys()) if x not in initial_keys]})
     import pandas
     df = pandas.DataFrame.from_dict(configs)
-    print configs
+    print(configs)
     cols = df.columns.tolist()
     # display(df[["host"] +
     #                     [x for x in dict_to_report.keys() if x not in initial_keys]])
     display(df)
     return df
+
+def plot_losses(losses):
+    import seaborn
 
 
 if __name__ == "__main__":
@@ -166,5 +169,5 @@ if __name__ == "__main__":
     elif args.command == "grep_logdirs":
         runs = find_runs_on_filesystem(args.campaign_name, logs_filepath=args.db_type, attach_rundirs=True)
         for run in runs:
-            print(run["run_dir"])
+            print((run["run_dir"]))
 

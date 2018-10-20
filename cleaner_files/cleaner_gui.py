@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
         def load_and_view_file_contents(self, current, previous):
 
-            print current.indexes()
+            print(current.indexes())
             model_index = current.indexes()[0]
 
             filename = self.model.data(model_index).toString()
@@ -102,8 +102,8 @@ if __name__ == "__main__":
                         line = rules_f.readline().strip()
 
                     self.update_tableWidgetxxxx(self.tableWidget_output_file_contents,
-                                                sorted(self.rules_dict.items(), key=lambda x: x[0]),
-                                                len(self.rules_dict.keys()),
+                                                sorted(list(self.rules_dict.items()), key=lambda x: x[0]),
+                                                len(list(self.rules_dict.keys())),
                                                 1 + 1 + n_analyzes + 1) # id + golden + FST analyzes + selected
 
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             if rules:
                 for row in range(table_widget.rowCount()):
                     row_items = rules[row]
-                    print row_items
+                    print(row_items)
                     item = self.listWidget_selected_file_contents.item(
                         int(row_items[0]) - 1)  # type: QListWidgetItem
                     item.setBackgroundColor(QtGui.QColor(255, 0, 0, 127))
@@ -149,7 +149,7 @@ if __name__ == "__main__":
             self.rules_dict = {}
 
             for idx in range(self.listWidget_selected_file_contents.count()):
-                row_items = unicode(self.listWidget_selected_file_contents.item(idx).text()).strip().split(" ")
+                row_items = str(self.listWidget_selected_file_contents.item(idx).text()).strip().split(" ")
 
                 rules_item = [x.encode("utf8") for x in [row_items[0],
                                                          row_items[4],
@@ -159,8 +159,8 @@ if __name__ == "__main__":
                 self.rules_dict[int(row_items[0])] = rules_item
 
             self.update_tableWidgetxxxx(self.tableWidget_output_file_contents,
-                                        sorted(self.rules_dict.items(), key=lambda x: x[0]),
-                                        len(self.rules_dict.keys()),
+                                        sorted(list(self.rules_dict.items()), key=lambda x: x[0]),
+                                        len(list(self.rules_dict.keys())),
                                         1 + 1 + 1 + 1)  # id + golden + FST analyzes + selected
 
 
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
             other_analyzes = [self.listWidget_selected_row.item(i) for i in range(self.listWidget_selected_row.count())] # type: list[QListWidgetItem]
 
-            rules_item = [unicode(x).encode("utf8") for x in [entry_id,
+            rules_item = [str(x).encode("utf8") for x in [entry_id,
                           self.textEdit_golden_morph_analysis.toPlainText()] + \
                           [x.text() for x in other_analyzes] + \
                          [self.textEdit_2.toPlainText()]]
@@ -178,16 +178,16 @@ if __name__ == "__main__":
             self.rules_dict[entry_id] = rules_item
 
             self.update_tableWidgetxxxx(self.tableWidget_output_file_contents,
-                                        sorted(self.rules_dict.items(), key=lambda x: x[0]),
-                                        len(self.rules_dict.keys()),
+                                        sorted(list(self.rules_dict.items()), key=lambda x: x[0]),
+                                        len(list(self.rules_dict.keys())),
                                         1 + 1 + n_analyzes + 1)  # id + golden + FST analyzes + selected
 
         def load_and_view_samples_from_train_and_dev(self, current, previous):
-            print current.indexes()
+            print(current.indexes())
 
             model_index = current.indexes()[0]
 
-            morph_analyzes = unicode(self.listWidget_selected_file_contents.model().data(
+            morph_analyzes = str(self.listWidget_selected_file_contents.model().data(
                 model_index).toString()).strip().split(" ")
             # print morph_analyzes
             golden_morph_analysis = morph_analyzes[4]
@@ -216,9 +216,9 @@ if __name__ == "__main__":
 
             self.listWidget_selected_row.selectionModel().selectionChanged.connect(self.update_corrected_morph_analysis)
 
-            print type(target)
-            print target
-            print target.encode("utf8")
+            print(type(target))
+            print(target)
+            print(target.encode("utf8"))
 
             # target = target.replace("?", "\?")
 
@@ -229,8 +229,8 @@ if __name__ == "__main__":
 
             lines = [x.decode("utf8") for x in lines.split("\n")]
 
-            print type(lines[0])
-            print len(lines)
+            print(type(lines[0]))
+            print(len(lines))
 
             self.tableWidget_samples_from_train_and_dev.clear()
 
@@ -263,7 +263,7 @@ if __name__ == "__main__":
                     for column in range(self.tableWidget_output_file_contents.columnCount()):
                         cell_content = self.tableWidget_output_file_contents.item(row, column).text() # type: QString
                         if cell_content:
-                            row_content.append(unicode(cell_content).encode("utf8"))
+                            row_content.append(str(cell_content).encode("utf8"))
                     if row != 0:
                         f.write("\n")
                     f.write(" ".join(row_content))

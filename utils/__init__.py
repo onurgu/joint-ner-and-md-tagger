@@ -1,6 +1,6 @@
 
 import codecs
-import cPickle
+import pickle
 import optparse
 import os
 import re
@@ -121,8 +121,8 @@ def get_name(parameters):
     Generate a model name from its parameters.
     """
     l = []
-    for k, v in parameters.items():
-        if (type(v) is str or type(v) is unicode) and "/" in v:
+    for k, v in list(parameters.items()):
+        if (type(v) is str or type(v) is str) and "/" in v:
             l.append((k, v[::-1][:v[::-1].index('/')][::-1]))
         else:
             l.append((k, v))
@@ -150,9 +150,9 @@ def create_mapping(dico):
     Create a mapping (item to ID / ID to item) from a dictionary.
     Items are ordered by decreasing frequency.
     """
-    sorted_items = sorted(dico.items(), key=lambda x: (-x[1], x[0]))
+    sorted_items = sorted(list(dico.items()), key=lambda x: (-x[1], x[0]))
     id_to_item = {i: v[0] for i, v in enumerate(sorted_items)}
-    item_to_id = {v: k for k, v in id_to_item.items()}
+    item_to_id = {v: k for k, v in list(id_to_item.items())}
     return item_to_id, id_to_item
 
 
@@ -534,10 +534,10 @@ def form_parameters_dict(opts):
 def read_parameters_from_file(filepath, opts_filepath):
 
     with open(filepath, "r") as f:
-        parameters = cPickle.load(f)
+        parameters = pickle.load(f)
 
     with open(opts_filepath, "r") as f:
-        opts = cPickle.load(f)
+        opts = pickle.load(f)
 
     return parameters, opts
 
