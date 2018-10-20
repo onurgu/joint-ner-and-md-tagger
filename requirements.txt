@@ -2,5 +2,6 @@ IPython
 numpy==1.*
 virtualenvwrapper
 pymongo==3.*
-sacred==0.7.*
-pandas=*
+sacred==0.7.4
+pandas
+dynet==2.0.3
