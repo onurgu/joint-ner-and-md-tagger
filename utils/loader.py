@@ -637,7 +637,7 @@ def prepare_dataset(sentences,
 
     n_buckets = min([9, len(sentences)])
     print("n_sentences: %d" % len(sentences))
-    n_samples_to_be_bucketed = len(sentences)/n_buckets
+    n_samples_to_be_bucketed = int(len(sentences)/n_buckets)
 
     print("n_samples_to_be_binned: %d" % n_samples_to_be_bucketed)
 

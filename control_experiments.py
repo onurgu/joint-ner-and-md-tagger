@@ -282,10 +282,9 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
             avg_loss_over_training_set = float(m.group(2))
             record_metric(epoch, "avg_loss", avg_loss_over_training_set)
 
-
-    for line in iter(process.stdout.readline, ''):
-        sys.stdout.write(line)
-        capture_information(line)
+    for line in process.stdout:
+        sys.stdout.write(line.decode("utf8"))
+        capture_information(line.decode("utf8"))
         sys.stdout.flush()
 
     return model_path

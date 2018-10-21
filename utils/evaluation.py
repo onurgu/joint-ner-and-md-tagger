@@ -161,7 +161,7 @@ def eval_with_specific_model(model,
                 # sys.exit(0)
                 with codecs.open(output_path, "r", encoding="utf-8") as output_path_f:
                     eval_lines = [x.rstrip() for x in subprocess.check_output([eval_script],
-                                                                              stdin=output_path_f).split(
+                                                                              stdin=output_path_f).decode("utf8").split(
                         "\n")]
 
                     # CoNLL evaluation results
