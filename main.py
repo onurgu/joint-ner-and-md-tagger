@@ -3,7 +3,6 @@ import argparse
 
 from utils.train import train
 from utils.evaluation import evaluate, predict_from_stdin
-from web.api.webapp import start_webapp
 
 import sys
 
@@ -28,4 +27,5 @@ if __name__ == "__main__":
     elif args.command == "predict_stdin":
         predict_from_stdin(sys_argv_to_be_transferred)
     elif args.command == "webapp":
+        from web.api.webapp import start_webapp
         start_webapp(sys_argv_to_be_transferred)
