@@ -29,6 +29,13 @@ bash ${rundir_path}/helper-script-to-run-the-experiment-set-over-all-languages-T
 	# experiment_name=XXX-dim-10-morpho_tag_type-char
 	job_id=`echo ${line} | awk '{ match($0, /.* experiment_name=([^ ]+) /, arr); printf "%s", arr[1]; }'`
 
+    n_current_jobs=$(squeue -o '%i' -h | wc -l)
+    while [[ n_current_jobs -ge 100 ]]; do
+        echo Unfortunately, the number of jobs waiting and running ${n_current_jobs} is equal to or greater than the limit of 100. Waiting for 5 minutes to check again.
+        sleep 300
+        n_current_jobs=$(squeue -o '%i' -h | wc -l)
+    done
+
 	echo '#!/bin/bash' > ${rundir_path}/batch-script-${job_id}.sh
 	echo $line >> ${rundir_path}/batch-script-${job_id}.sh
 
