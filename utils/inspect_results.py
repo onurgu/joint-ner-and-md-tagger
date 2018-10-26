@@ -141,6 +141,35 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
     display(df)
     return df
 
+
+def report(campaign_name="TRUBA-20181010-over-all-languages-03-dim-10-morpho_tag_type-char"):
+    df6, _ = report_results_of_a_specific_campaign(
+        campaign_name=campaign_name, db_type = "../experiment-logs/")
+
+    # TODO: find a way to make 0 epochs 1 or ignore.
+    df7 = df6.assign(duration_per_epoch=lambda x: x.duration / (x.epochs + 1))
+
+    for lang_name in "czech spanish hungarian finnish turkish".split(" "):
+        df_lang_name = df7.loc[df7['lang_name'] == lang_name].sort_values(["integration_mode",
+                                                                           "active_models",
+                                                                           "use_golden_morpho_analysis_in_word_representation",
+                                                                           "multilayer",
+                                                                           "shortcut_connections",
+                                                                           "lang_name"])
+        print(lang_name)
+        print("duration_per_epoch", df_lang_name.duration_per_epoch.mean())
+        print("epochs", df_lang_name.epochs.mean())
+        print("epochs", df_lang_name.epochs.describe())
+        print("NER_best_test", df_lang_name.groupby(["integration_mode",
+                                                     "active_models",
+                                                     "use_golden_morpho_analysis_in_word_representation",
+                                                     "multilayer",
+                                                     "shortcut_connections",
+                                                     "lang_name"]).NER_best_test.mean())
+
+        df_lang_name.to_csv(f"./reports/report-{campaign_name}-{lang_name}.csv")
+
+
 def plot_losses(losses):
     import seaborn
 
