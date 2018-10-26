@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 export ner_tagger_root=/truba/home/ogungor/projects/research/projects/focus/joint_md_and_ner/joint-ner-and-md-tagger
+
 export virtualenv_name=joint_ner_dynet
+
 export datasets_root=~/projects/research/datasets/joint_ner_dynet/
+
 export experiment_logs_path=/truba/home/ogungor/projects/research/projects/focus/joint_md_and_ner/experiment-logs/
 export virtualenvwrapper_path=/truba/home/ogungor/.local/bin/virtualenvwrapper.sh
 export environment_variables_path=environment-variables
 export sacred_args='-F '${experiment_logs_path}
+
 export pretrained_embeddings=turkish/huawei-turkish-texts-dim-10.vec
 
 export LD_LIBRARY_PATH=/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/compiler/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/mkl/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/compiler/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/mkl/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/compiler/lib/intel64:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/compiler/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/mpi/intel64/lib:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/mpi/mic/lib:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/ipp/lib/intel64:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/compiler/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/mkl/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/tbb/lib/intel64/gcc4.7:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/tbb/lib/intel64/gcc4.7:/truba/sw/centos7.3/comp/intel/PS2018-update2/debugger_2018/iga/lib:/truba/sw/centos7.3/comp/intel/PS2018-update2/debugger_2018/libipt/intel64/lib:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/daal/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/daal/../tbb/lib/intel64_lin/gcc4.4:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/tbb/lib/intel64_lin/gcc4.7:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/compiler/lib/intel64_lin:/truba/sw/centos7.3/comp/intel/PS2018-update2/compilers_and_libraries_2018.2.199/linux/mkl/lib/intel64_lin:$LD_LIBRARY_PATH
