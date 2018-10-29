@@ -159,7 +159,7 @@ def eval_with_specific_model(model,
                 print(command_string)
                 # os.system(command_string)
                 # sys.exit(0)
-                with codecs.open(output_path, "r", encoding="utf-8") as output_path_f:
+                with open(output_path, "r", encoding="utf-8") as output_path_f:
                     eval_lines = [x.rstrip() for x in subprocess.check_output([eval_script],
                                                                               stdin=output_path_f).decode("utf8").split(
                         "\n")]
