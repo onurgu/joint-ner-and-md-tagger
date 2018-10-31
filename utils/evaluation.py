@@ -154,15 +154,22 @@ def eval_with_specific_model(model,
                 with codecs.open(output_path, 'w', 'utf8') as f:
                     f.write("\n".join(predictions))
 
-                print("Evaluating the %s dataset with conlleval script" % (label + "_" + purpose))
-                command_string = "%s < %s > %s" % (eval_script, output_path, scores_path)
-                print(command_string)
+
                 # os.system(command_string)
                 # sys.exit(0)
                 with open(output_path, "r", encoding="utf-8") as output_path_f:
-                    eval_lines = [x.rstrip() for x in subprocess.check_output([eval_script],
-                                                                              stdin=output_path_f).decode("utf8").split(
-                        "\n")]
+                    try:
+                        print("Evaluating the %s dataset with conlleval script" % (label + "_" + purpose))
+                        command_string = "%s < %s > %s" % (eval_script, output_path, scores_path)
+                        print(command_string)
+                        print("Will timeout in 30 seconds and set the F1-score to 0 for this eval.")
+                        eval_script_output = subprocess.check_output([eval_script], stdin=output_path_f, timeout=30)
+                    except subprocess.TimeoutExpired as e:
+                        print(e)
+                        eval_script_output = b"""processed 0 tokens with 0 phrases; found: 0 phrases; correct: 0.
+accuracy:  0.0%; precision:  0.0%; recall:  0.0%; FB1:  0.0
+"""
+                    eval_lines = [x.rstrip() for x in eval_script_output.decode("utf8").split("\n")]
 
                     # CoNLL evaluation results
                     # eval_lines = [l.rstrip() for l in codecs.open(scores_path, 'r', 'utf8')]
