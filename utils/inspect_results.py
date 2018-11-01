@@ -56,13 +56,7 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
 
 def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
     print(campaign_name)
-    if db_type == "mongo":
-        import pymongo
-        client = pymongo.MongoClient("localhost", 27017)
-        db = client.joint_ner_and_md
-        runs = db.runs.find({"config.experiment_name": campaign_name})
-    else:
-        runs = find_runs_on_filesystem(campaign_name, logs_filepath=db_type)
+    runs = obtain_runs(campaign_name, db_type)
     configs = []
     for run_idx, run in enumerate(runs):
 
@@ -142,6 +136,70 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
     return df
 
 
+def generate_df_for_losses(campaign_name, db_type="../experiment-logs/"):
+    runs = obtain_runs(campaign_name = campaign_name, db_type = db_type)
+    configs = []
+    initial_keys = ['']
+    for run_idx, run in enumerate(runs):
+        dict_to_report = dict(run["config"])
+        initial_keys = list(dict_to_report.keys())
+
+        # add duration field
+        import datetime
+        if "stop_time" in run["run"]:
+            stop_time_field_name = "stop_time"
+        else:
+            stop_time_field_name = "heartbeat"
+        dict_to_report.update(
+            {run_field_name: datetime.datetime.strptime(run["run"][run_field_name], "%Y-%m-%dT%H:%M:%S.%f")
+             for run_field_name in ["start_time", stop_time_field_name]})
+        dict_to_report["duration"] = dict_to_report[stop_time_field_name] - dict_to_report["start_time"]
+
+        # add epochs field
+        dict_to_report["epochs"] = max([len(list(run["info"][label].keys()))
+                                        for label in ["NER_dev_f_score", "MORPH_dev_f_score"]])
+
+        dict_to_report["avg_losses"] = [float(x[1][-1]) for x in sorted(run["info"]["avg_loss"].items(), key=lambda x: x[0])] if "avg_loss" in run["info"] else []
+
+        first_part_of_fields = [
+            "host",
+            "integration_mode",
+            "active_models",
+            "use_golden_morpho_analysis_in_word_representation",
+            "multilayer",
+            "shortcut_connections",
+            "epochs",
+            "lang_name",
+            "start_time",
+            "stop_time",
+            "duration"]
+        extra_fields = [x for x in list(dict_to_report.keys()) if x not in initial_keys]
+        # filter out unwanted fields from the reported row
+        configs.append({key: dict_to_report[key]
+                        for key in
+                        [x for x in first_part_of_fields if x in dict_to_report] +
+                        extra_fields})
+    import pandas
+    df = pandas.DataFrame.from_dict(configs)
+    print(configs)
+    cols = df.columns.tolist()
+    # display(df[["host"] +
+    #                     [x for x in dict_to_report.keys() if x not in initial_keys]])
+    display(df)
+    return df
+
+
+def obtain_runs(campaign_name, db_type):
+    if db_type == "mongo":
+        import pymongo
+        client = pymongo.MongoClient("localhost", 27017)
+        db = client.joint_ner_and_md
+        runs = db.runs.find({"config.experiment_name": campaign_name})
+    else:
+        runs = find_runs_on_filesystem(campaign_name, logs_filepath=db_type)
+    return runs
+
+
 def report(campaign_name="TRUBA-20181010-over-all-languages-03-dim-10-morpho_tag_type-char"):
     df6, _ = report_results_of_a_specific_campaign(
         campaign_name=campaign_name, db_type = "../experiment-logs/")
@@ -170,8 +228,6 @@ def report(campaign_name="TRUBA-20181010-over-all-languages-03-dim-10-morpho_tag
         df_lang_name.to_csv(f"./reports/report-{campaign_name}-{lang_name}.csv")
 
 
-def plot_losses(losses):
-    import seaborn
 
 
 if __name__ == "__main__":
