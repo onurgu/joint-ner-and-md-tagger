@@ -22,7 +22,7 @@ if not os.path.exists(models_path):
 if not os.path.exists(eval_logs_dir):
     os.makedirs(eval_logs_dir)
 
-eval_script = os.path.join(eval_path, "conlleval")
+eval_script = os.path.join(eval_path, "conlleval-runner.sh")
 
 
 class RegexpTokenizer():
