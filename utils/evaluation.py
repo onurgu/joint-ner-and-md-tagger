@@ -154,22 +154,26 @@ def eval_with_specific_model(model,
                 with codecs.open(output_path, 'w', 'utf8') as f:
                     f.write("\n".join(predictions))
 
-
                 # os.system(command_string)
                 # sys.exit(0)
                 # with open(output_path, "r", encoding="utf-8") as output_path_f:
-                try:
-                    print("Evaluating the %s dataset with conlleval script runner" % (label + "_" + purpose))
-                    command_string = "%s %s %s" % (eval_script, output_path, scores_path)
-                    print(command_string)
-                    print("Will timeout in 30 seconds and set the F1-score to 0 for this eval.")
-                    # eval_script_output = subprocess.check_output([eval_script], stdin=output_path_f, timeout=30)
-                    eval_script_output = subprocess.check_output([eval_script, output_path, scores_path], timeout=30)
-                except subprocess.TimeoutExpired as e:
-                    print(e)
-                    eval_script_output = b"""processed 0 tokens with 0 phrases; found: 0 phrases; correct: 0.
-accuracy:  0.0%; precision:  0.0%; recall:  0.0%; FB1:  0.0
-"""
+                # try:
+                from evaluation.conlleval import evaluate as conll_evaluate, report as conll_report
+                with open(output_path, "r") as output_path_f, open(scores_path, "w") as scores_path_f:
+                    print("Evaluating the %s dataset with conlleval script's Python implementation" % (label + "_" + purpose))
+                    counts = conll_evaluate(output_path_f)
+                    eval_script_output = conll_report(counts, out=scores_path_f)
+                # print("Evaluating the %s dataset with conlleval script runner" % (label + "_" + purpose))
+                # command_string = "%s %s %s" % (eval_script, output_path, scores_path)
+                # print(command_string)
+                # print("Will timeout in 30 seconds and set the F1-score to 0 for this eval.")
+                # # eval_script_output = subprocess.check_output([eval_script], stdin=output_path_f, timeout=30)
+                # eval_script_output = subprocess.check_output([eval_script, output_path, scores_path], timeout=30)
+#                 except subprocess.TimeoutExpired as e:
+#                     print(e)
+#                     eval_script_output = b"""processed 0 tokens with 0 phrases; found: 0 phrases; correct: 0.
+# accuracy:  0.0%; precision:  0.0%; recall:  0.0%; FB1:  0.0
+# """
                 eval_lines = [x.rstrip() for x in eval_script_output.decode("utf8").split("\n")]
 
                 # CoNLL evaluation results
