@@ -26,83 +26,87 @@ morpho_tag_type=char
 
 for trial in `seq 1 ${n_trials}`; do
 
-    for lang_name in ${target_languages}; do
+    for batch_size in 1; do
 
-        lang_dataset_root=${datasets_root}/${lang_name}
+        for lang_name in ${target_languages}; do
 
-        ini_filepath=${lang_dataset_root}/${lang_name}-joint-md-and-ner-tagger.ini
-        lang_dataset_filepaths=`python ./utils/ini_parse.py --add_suffixes --input ${ini_filepath} --query ner.train_file ner.dev_file ner.test_file md.train_file md.dev_file md.test_file`
+            lang_dataset_root=${datasets_root}/${lang_name}
 
-        # lang_dataset_root=${lang_dataset_root}
-        dataset_filepaths="file_format=${file_format} lang_name=${lang_name} datasets_root=${datasets_root} ${lang_dataset_filepaths} "
+            ini_filepath=${lang_dataset_root}/${lang_name}-joint-md-and-ner-tagger.ini
+            lang_dataset_filepaths=`python ./utils/ini_parse.py --add_suffixes --input ${ini_filepath} --query ner.train_file ner.dev_file ner.test_file md.train_file md.dev_file md.test_file`
 
-        for morpho_tag_type in char ; do
+            # lang_dataset_root=${lang_dataset_root}
+            dataset_filepaths="file_format=${file_format} lang_name=${lang_name} datasets_root=${datasets_root} ${lang_dataset_filepaths} "
 
-            small_sizes="char_dim=$dim \
-            char_lstm_dim=$dim \
-            morpho_tag_dim=$dim \
-            morpho_tag_lstm_dim=$dim \
-            morpho_tag_type=${morpho_tag_type} \
-            word_dim=$dim \
-            word_lstm_dim=$dim \
-            lr_method=sgd-learning_rate_float@0.01 "
-            # changed the learning rate to 0.01 from 0.100
+            for morpho_tag_type in char ; do
 
-            # experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-trial-`printf "%02d" ${trial}`
-            experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}
+                small_sizes="char_dim=$dim \
+                char_lstm_dim=$dim \
+                morpho_tag_dim=$dim \
+                morpho_tag_lstm_dim=$dim \
+                morpho_tag_type=${morpho_tag_type} \
+                word_dim=$dim \
+                word_lstm_dim=$dim \
+                batch_size=$batch_size \
+                lr_method=sgd-learning_rate_float@0.01 "
+                # changed the learning rate to 0.01 from 0.100
 
-            pre_command="echo ${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-lang_name-${lang_name}-trial-`printf "%02d" ${trial}` >> ${experiment_name}.log"
+                # experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-trial-`printf "%02d" ${trial}`
+                experiment_name=${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}
 
-            for imode in 0 1 2 ; do
-                if [[ $imode == 0 ]]; then
-                    for amodels in 1 0 ; do
+                pre_command="echo ${original_experiment_name}-dim-${dim}-morpho_tag_type-${morpho_tag_type}-lang_name-${lang_name}-trial-`printf "%02d" ${trial}` >> ${experiment_name}.log"
+
+                for imode in 0 1 2 ; do
+                    if [[ $imode == 0 ]]; then
+                        for amodels in 1 0 ; do
+                            command=${pre_command}" && "" ${preamble} \
+                            active_models=${amodels} \
+                            integration_mode=$imode \
+                            dynet_gpu=0 \
+                            embeddings_filepath=\""${pretrained_embeddings}"\" \
+                            ${dataset_filepaths} \
+                            $small_sizes \
+                            experiment_name=${experiment_name} ;"
+                            echo $command;
+                        done;
+                    elif [[ $imode == 1 ]]; then
                         command=${pre_command}" && "" ${preamble} \
-                        active_models=${amodels} \
-                        integration_mode=$imode \
+                        active_models=2 \
+                        integration_mode=1 \
                         dynet_gpu=0 \
                         embeddings_filepath=\""${pretrained_embeddings}"\" \
                         ${dataset_filepaths} \
                         $small_sizes \
                         experiment_name=${experiment_name} ;"
                         echo $command;
-                    done;
-                elif [[ $imode == 1 ]]; then
-                    command=${pre_command}" && "" ${preamble} \
-                    active_models=2 \
-                    integration_mode=1 \
-                    dynet_gpu=0 \
-                    embeddings_filepath=\""${pretrained_embeddings}"\" \
-                    ${dataset_filepaths} \
-                    $small_sizes \
-                    experiment_name=${experiment_name} ;"
-                    echo $command;
-                else
-                    command=${pre_command}" && "" ${preamble} \
-                    active_models=2 \
-                    integration_mode=2 \
-                    multilayer=1 \
-                    shortcut_connections=1 \
-                    dynet_gpu=0 \
-                    embeddings_filepath=\""${pretrained_embeddings}"\" \
-                    ${dataset_filepaths} \
-                    $small_sizes \
-                    experiment_name=${experiment_name} ;"
-                    echo $command;
+                    else
+                        command=${pre_command}" && "" ${preamble} \
+                        active_models=2 \
+                        integration_mode=2 \
+                        multilayer=1 \
+                        shortcut_connections=1 \
+                        dynet_gpu=0 \
+                        embeddings_filepath=\""${pretrained_embeddings}"\" \
+                        ${dataset_filepaths} \
+                        $small_sizes \
+                        experiment_name=${experiment_name} ;"
+                        echo $command;
 
-                    command=${pre_command}" && "" ${preamble} \
-                    active_models=2 \
-                    integration_mode=2 \
-                    dynet_gpu=0 \
-                    embeddings_filepath=\""${pretrained_embeddings}"\" \
-                    ${dataset_filepaths} \
-                    $small_sizes \
-                    experiment_name=${experiment_name} ;"
-                    echo $command;
+                        command=${pre_command}" && "" ${preamble} \
+                        active_models=2 \
+                        integration_mode=2 \
+                        dynet_gpu=0 \
+                        embeddings_filepath=\""${pretrained_embeddings}"\" \
+                        ${dataset_filepaths} \
+                        $small_sizes \
+                        experiment_name=${experiment_name} ;"
+                        echo $command;
 
-                fi ;
+                    fi ;
+                done
+
             done
 
-		done
-
+        done
 	done
 done
