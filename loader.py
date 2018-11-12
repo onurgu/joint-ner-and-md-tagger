@@ -307,7 +307,7 @@ def prepare_dataset(sentences, word_to_id, char_to_id, tag_to_id,
                 return morpho_tag_to_id['*UNKNOWN*']
 
         # for now we ignore different schemes we did in previous morph. tag parses.
-        morph_analyzes_tags = [[map(f_morpho_tag_to_id, analysis.split("+")[1:]) if analysis.split("+")[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
+        morph_analyzes_tags = [[map(f_morpho_tag_to_id, list("+".join(analysis.split("+")[1:]))) if analysis.split("+")[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
                                 for analysis in w[2:-1]] for w in s]
 
         def f_char_to_id(c):
