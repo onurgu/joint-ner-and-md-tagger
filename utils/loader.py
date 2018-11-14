@@ -195,7 +195,8 @@ def compile_MISC_column_contents(field_contents_dict):
 
 def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_index=1,
                        joint_learning=False,
-                       file_format="conll"):
+                       file_format="conll",
+                       morpho_tag_separator="+"):
     """
     Create a dictionary and a mapping of tags, sorted by frequency.
     """
@@ -207,7 +208,9 @@ def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_i
         else:
             morpho_tags = extract_morpho_tags_ordered(morpho_tag_type,
                                                       sentences, morpho_tag_column_index,
-                                                      joint_learning=joint_learning)
+                                                      joint_learning=joint_learning,
+                                                      file_format=file_format,
+                                                      morpho_tag_separator=morpho_tag_separator)
 
     elif file_format == "conllu":
 
@@ -222,7 +225,9 @@ def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_i
         else:
             morpho_tags = extract_morpho_tags_ordered(morpho_tag_type,
                                                       sentences, morpho_tag_column_index,
-                                                      joint_learning=joint_learning)
+                                                      joint_learning=joint_learning,
+                                                      file_format=file_format,
+                                                      morpho_tag_separator=morpho_tag_separator)
 
 
         ## TODO: xxx
@@ -241,21 +246,24 @@ def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_i
 
 def extract_morpho_tags_ordered(morpho_tag_type,
                                 sentences, morpho_tag_column_index,
-                                joint_learning=False):
+                                joint_learning=False,
+                                file_format="conll",
+                                morpho_tag_separator="+"):
     morpho_tags = []
     for sentence in sentences:
         # print s
         # sys.exit(1)
         morpho_tags += extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [], sentence,
-                                                                     morpho_tag_column_index)
+                                                                     morpho_tag_column_index,
+                                                                     file_format=file_format,
+                                                                     morpho_tag_separator=morpho_tag_separator)
     return morpho_tags
 
 
 def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, sentence, morpho_tag_column_index,
-                                                  file_format="conll"):
+                                                  file_format="conll",
+                                                  morpho_tag_separator="+"):
     assert morpho_tag_column_index in [1, 2], "We expect to 1 or 2"
-
-    morpho_tag_separator = "+"
 
     for word in sentence:
         if morpho_tag_type.startswith('wo_root'):
@@ -280,7 +288,7 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
                         tmp_morpho_tag = word[morpho_tag_column_index]
                     elif file_format == "conllu":
                         tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
-                    morpho_tags += [tmp_morpho_tag.split(morpho_tag_separator)[1:]]
+                    morpho_tags += [[tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[-1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]]
         elif morpho_tag_type.startswith('with_root'):
             if morpho_tag_column_index == 1:
                 if file_format == "conll":
@@ -475,7 +483,8 @@ def prepare_dataset(sentences,
                 else:
                     morpho_tags_in_the_sentence = \
                         extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [], sentence,
-                                                                      morpho_tag_column_index)
+                                                                      morpho_tag_column_index,
+                                                                      file_format=file_format)
 
                     morpho_tags = [[morpho_tag_to_id[morpho_tag] for morpho_tag in ww if morpho_tag in morpho_tag_to_id]
                                    for ww in morpho_tags_in_the_sentence]
@@ -488,7 +497,8 @@ def prepare_dataset(sentences,
                     else:
                         morpho_tags_in_the_sentence = \
                             extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [], sentence,
-                                                                          morpho_tag_column_index)
+                                                                          morpho_tag_column_index,
+                                                                          file_format=file_format)
 
                         morpho_tags = [[morpho_tag_to_id[morpho_tag] for morpho_tag in ww if morpho_tag in morpho_tag_to_id]
                                        for ww in morpho_tags_in_the_sentence]
@@ -528,8 +538,8 @@ def prepare_dataset(sentences,
             print("ERROR IN ALL_ANALYSES")
 
         # for now we ignore different schemes we did in previous morph. tag parses.
-        morph_analyses_tags = [[list(map(f_morpho_tag_to_id, list(morpho_tag_separator.join(analysis.split(morpho_tag_separator)[1:])))) \
-                                    if analysis.split(morpho_tag_separator)[1:] else [morpho_tag_to_id["*UNKNOWN*"]]
+        morph_analyses_tags = [[list(map(f_morpho_tag_to_id, list(morpho_tag_separator.join(([analysis.split(morpho_tag_separator)[1].split("~")[-1]] + analysis.split(morpho_tag_separator)[2:]))))) \
+                                    if ([analysis.split(morpho_tag_separator)[1].split("~")[-1]] + analysis.split(morpho_tag_separator)[2:]) else [morpho_tag_to_id["*UNKNOWN*"]]
                                 for analysis in analyses] for analyses in all_analyses]
 
         def f_char_to_id(c):
@@ -722,7 +732,8 @@ def _prepare_datasets(opts, parameters, for_training=True):
     return training_sets, max_sentence_lengths, max_word_lengths
 
 
-def create_mappings(training_sets, parameters, file_format="conll"):
+def create_mappings(training_sets, parameters, file_format="conll",
+                    morpho_tag_separator="+"):
     # Create a dictionary / mapping of words
     # If we use pretrained embeddings, we add them to the dictionary.
     if parameters['pre_emb']:
@@ -765,7 +776,8 @@ def create_mappings(training_sets, parameters, file_format="conll"):
                 morpho_tag_type=parameters['mt_t'],
                 morpho_tag_column_index=parameters['mt_ci'],
                 joint_learning=True,
-                file_format=file_format)
+                file_format=file_format,
+                morpho_tag_separator=morpho_tag_separator)
     else:
         id_to_morpho_tag = {}
         morpho_tag_to_id = {}
@@ -787,6 +799,8 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     :return:
     """
 
+    ud_morpho_tag_separator = "|"
+
     training_sets, max_sentence_lengths, max_word_lengths = \
         _prepare_datasets(opts, parameters, for_training=for_training)
 
@@ -800,9 +814,11 @@ def prepare_datasets(model, opts, parameters, for_training=True):
         word_to_id, id_to_word, \
         char_to_id, id_to_char, \
         tag_to_id, id_to_tag, \
-        morpho_tag_to_id, id_to_morpho_tag = create_mappings(training_sets,
-                                                             parameters,
-                                                             file_format=parameters['file_format'])
+        morpho_tag_to_id, id_to_morpho_tag = \
+            create_mappings(training_sets,
+                            parameters,
+                            file_format=parameters['file_format'],
+                            morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else ud_morpho_tag_separator))
 
     if opts.overwrite_mappings and for_training:
         print('Saving the mappings to disk...')
@@ -811,8 +827,6 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     data_dict = {"ner": {}, "md": {}}
     unique_words_dict = {"ner": {}, "md": {}}
     stats_dict = {"ner": {}, "md": {}}
-
-    ud_morpho_tag_separator = "|"
 
     # Index data
     if for_training:
