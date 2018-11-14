@@ -54,7 +54,22 @@ def report_results_of_a_specific_campaign(campaign_name, db_type):
     return df, df_groupedby_hyperparameters.NER_best_test.mean()
 
 
-def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
+def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type, keys_to_report=None, extra_keys_to_report=None):
+    if keys_to_report is None:
+        keys_to_report = ["host",
+                         "integration_mode",
+                         "active_models",
+                         "use_golden_morpho_analysis_in_word_representation",
+                         "multilayer",
+                         "shortcut_connections",
+                         "epochs",
+                         "lang_name",
+                         "start_time",
+                         "stop_time",
+                         "duration"]
+    if extra_keys_to_report is None:
+        extra_keys_to_report = []
+    keys_to_report += extra_keys_to_report
     print(campaign_name)
     runs = obtain_runs(campaign_name, db_type)
     configs = []
@@ -114,17 +129,7 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type):
                         if str(epoch_id_of_the_best_dev_result) in list(run["info"][x + "_test_f_score"].keys()) else -1
                 print(dict_to_report[result_designation_label + "_to_" + x + "_test"])
 
-        configs.append({key: dict_to_report[key] for key in [x for x in ["host",
-                                                                         "integration_mode",
-                                                                         "active_models",
-                                                                         "use_golden_morpho_analysis_in_word_representation",
-                                                                         "multilayer",
-                                                                         "shortcut_connections",
-                                                                         "epochs",
-                                                                         "lang_name",
-                                                                         "start_time",
-                                                                         "stop_time",
-                                                                         "duration"] if x in dict_to_report] +
+        configs.append({key: dict_to_report[key] for key in [x for x in keys_to_report if x in dict_to_report] +
                         [x for x in list(dict_to_report.keys()) if x not in initial_keys]})
     import pandas
     df = pandas.DataFrame.from_dict(configs)
