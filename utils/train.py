@@ -68,6 +68,9 @@ def train(sys_argv):
 
     n_epochs = opts.maximum_epochs  # number of epochs over the training set
 
+    tracked_epoch_window_width = 10
+    last_epoch_with_best_scores = 0
+    last_N_epochs_avg_loss_values = [0] * tracked_epoch_window_width
     best_dev = -np.inf
     best_test = -np.inf
 
@@ -125,6 +128,8 @@ def train(sys_argv):
 
         model.trainer.status()
 
+        last_N_epochs_avg_loss_values = last_N_epochs_avg_loss_values[1:] + [np.mean(epoch_costs)]
+
         # datasets_to_be_tested = {"ner": {"dev": data_dict["ner"]["dev"], "test": data_dict["ner"]["test"]},
         #                          "md": {"dev": data_dict["md"]["dev"], "test": data_dict["md"]["test"]}}
 
@@ -143,6 +148,7 @@ def train(sys_argv):
                     print("NER Epoch: %d New best dev score => best_dev, best_test: %lf %lf" % (epoch_no + 1,
                                                                                                        f_scores["ner"]["dev"],
                                                                                                        f_scores["ner"]["test"]))
+                    last_epoch_with_best_scores = epoch_no
                     best_dev = f_scores["ner"]["dev"]
                     best_test = f_scores["ner"]["test"]
                     model.save(epoch_no)
@@ -168,6 +174,14 @@ def train(sys_argv):
         print("Epoch {} done. Average cost: {}".format(epoch_no, np.mean(epoch_costs)))
         print("MainTaggerModel dir: {}".format(model.model_path))
         print("Training took {} seconds for this epoch".format(time.time()-start_time))
+
+        if epoch_no-last_epoch_with_best_scores == 0 or epoch_no < last_epoch_with_best_scores + 10:
+            print(f"Continue to train as the last peoch with best scores was only "
+                  f"{epoch_no-last_epoch_with_best_scores} epochs before")
+        else:
+            print(f"Stop training as the last epoch with best scores was {epoch_no-last_epoch_with_best_scores} epochs "
+                  f"before")
+            break
 
 
 if __name__ == "__main__":
