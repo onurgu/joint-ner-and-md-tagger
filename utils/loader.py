@@ -210,7 +210,8 @@ def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_i
                                                       sentences, morpho_tag_column_index,
                                                       joint_learning=joint_learning,
                                                       file_format=file_format,
-                                                      morpho_tag_separator=morpho_tag_separator)
+                                                      morpho_tag_separator=morpho_tag_separator,
+                                                      use_all_analyses=True)
 
     elif file_format == "conllu":
 
@@ -227,7 +228,8 @@ def morpho_tag_mapping(sentences, morpho_tag_type='wo_root', morpho_tag_column_i
                                                       sentences, morpho_tag_column_index,
                                                       joint_learning=joint_learning,
                                                       file_format=file_format,
-                                                      morpho_tag_separator=morpho_tag_separator)
+                                                      morpho_tag_separator=morpho_tag_separator,
+                                                      use_all_analyses=True)
 
 
         ## TODO: xxx
@@ -248,7 +250,8 @@ def extract_morpho_tags_ordered(morpho_tag_type,
                                 sentences, morpho_tag_column_index,
                                 joint_learning=False,
                                 file_format="conll",
-                                morpho_tag_separator="+"):
+                                morpho_tag_separator="+",
+                                use_all_analyses=False):
     morpho_tags = []
     for sentence in sentences:
         # print s
@@ -256,14 +259,22 @@ def extract_morpho_tags_ordered(morpho_tag_type,
         morpho_tags += extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [], sentence,
                                                                      morpho_tag_column_index,
                                                                      file_format=file_format,
-                                                                     morpho_tag_separator=morpho_tag_separator)
+                                                                     morpho_tag_separator=morpho_tag_separator,
+                                                                     use_all_analyses=use_all_analyses)
     return morpho_tags
 
 
 def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, sentence, morpho_tag_column_index,
                                                   file_format="conll",
-                                                  morpho_tag_separator="+"):
+                                                  morpho_tag_separator="+",
+                                                  use_all_analyses=False):
     assert morpho_tag_column_index in [1, 2], "We expect to 1 or 2"
+
+    def fix_BLANK(x):
+        if x == '':
+            return "*BLANK*"
+        else:
+            return x
 
     for word in sentence:
         if morpho_tag_type.startswith('wo_root'):
@@ -287,8 +298,12 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
                     if file_format == "conll":
                         tmp_morpho_tag = word[morpho_tag_column_index]
                     elif file_format == "conllu":
+                        if use_all_analyses:
+                            for tmp_morpho_tag in extract_all_analyses_from_conllu(word):
+                                morpho_tags += [list(map(fix_BLANK, [tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[
+                                                     -1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]))]
                         tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
-                    morpho_tags += [[tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[-1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]]
+                    morpho_tags += [list(map(fix_BLANK, [tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[-1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]))]
         elif morpho_tag_type.startswith('with_root'):
             if morpho_tag_column_index == 1:
                 if file_format == "conll":
@@ -484,7 +499,8 @@ def prepare_dataset(sentences,
                     morpho_tags_in_the_sentence = \
                         extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [], sentence,
                                                                       morpho_tag_column_index,
-                                                                      file_format=file_format)
+                                                                      file_format=file_format,
+                                                                      morpho_tag_separator=morpho_tag_separator)
 
                     morpho_tags = [[morpho_tag_to_id[morpho_tag] for morpho_tag in ww if morpho_tag in morpho_tag_to_id]
                                    for ww in morpho_tags_in_the_sentence]
@@ -498,7 +514,8 @@ def prepare_dataset(sentences,
                         morpho_tags_in_the_sentence = \
                             extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, [], sentence,
                                                                           morpho_tag_column_index,
-                                                                          file_format=file_format)
+                                                                          file_format=file_format,
+                                                                          morpho_tag_separator=morpho_tag_separator)
 
                         morpho_tags = [[morpho_tag_to_id[morpho_tag] for morpho_tag in ww if morpho_tag in morpho_tag_to_id]
                                        for ww in morpho_tags_in_the_sentence]
@@ -538,9 +555,20 @@ def prepare_dataset(sentences,
             print("ERROR IN ALL_ANALYSES")
 
         # for now we ignore different schemes we did in previous morph. tag parses.
-        morph_analyses_tags = [[list(map(f_morpho_tag_to_id, list(morpho_tag_separator.join(([analysis.split(morpho_tag_separator)[1].split("~")[-1]] + analysis.split(morpho_tag_separator)[2:]))))) \
-                                    if ([analysis.split(morpho_tag_separator)[1].split("~")[-1]] + analysis.split(morpho_tag_separator)[2:]) else [morpho_tag_to_id["*UNKNOWN*"]]
-                                for analysis in analyses] for analyses in all_analyses]
+        morph_analyses_tags = [] # list of list of lists
+        for analyses_for_word in all_analyses:
+            encoded_analyses_for_word = []
+            for analysis in analyses_for_word:
+                if morpho_tag_type == "char":
+                    current_tag_sequence = list(morpho_tag_separator.join(analysis.split(morpho_tag_separator)[1:]))
+                else:
+                    current_tag_sequence = [analysis.split(morpho_tag_separator)[1].split("~")[-1]] + analysis.split(morpho_tag_separator)[2:]
+                if current_tag_sequence:
+                    encoded_analysis_for_word = [list(map(f_morpho_tag_to_id, current_tag_sequence))]
+                else:
+                    encoded_analysis_for_word = [[morpho_tag_to_id["*UNKNOWN*"]]]
+                encoded_analyses_for_word += encoded_analysis_for_word
+            morph_analyses_tags += [encoded_analyses_for_word]
 
         def f_char_to_id(c):
             if c in char_to_id:
@@ -767,7 +795,10 @@ def create_mappings(training_sets, parameters, file_format="conll",
     dico_chars, char_to_id, id_to_char = \
         char_mapping(sentences_for_mapping, file_format=file_format)
     dico_tags, tag_to_id, id_to_tag = \
-        tag_mapping(sentences_for_mapping, file_format=file_format)
+        tag_mapping(training_sets["ner"]["train"]
+                    + training_sets["ner"]["dev"]
+                    + training_sets["ner"]["test"],
+                    file_format=file_format)
     # if file_format is conllu, this works for datasets that contain CORRECT_ANALYSIS in 10th column
     if parameters['mt_d'] > 0:
         dico_morpho_tags, morpho_tag_to_id, id_to_morpho_tag = \
