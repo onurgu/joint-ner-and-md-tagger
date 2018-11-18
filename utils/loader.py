@@ -566,6 +566,8 @@ def prepare_dataset(sentences,
                 if morpho_tag_type == "char":
                     current_tag_sequence = list(morpho_tag_separator.join(analysis.split(morpho_tag_separator)[1:]))
                 else:
+                    if len(analysis.split(morpho_tag_separator)) == 1:
+                        analysis = morpho_tag_separator.join([analysis, "*UNKNOWN*"])
                     current_tag_sequence = [analysis.split(morpho_tag_separator)[1].split("~")[-1]] + analysis.split(morpho_tag_separator)[2:]
                 if current_tag_sequence:
                     encoded_analysis_for_word = [list(map(f_morpho_tag_to_id, current_tag_sequence))]
