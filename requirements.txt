@@ -2,6 +2,7 @@ IPython
 numpy==1.*
 virtualenvwrapper
 pymongo==3.*
-sacred==0.7.4
+#sacred==0.7.4
+git+https://github.com/onurgu/sacred@onurgu_branch
 pandas
 dynet==2.0.3
