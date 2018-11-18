@@ -300,9 +300,13 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
                     elif file_format == "conllu":
                         if use_all_analyses:
                             for tmp_morpho_tag in extract_all_analyses_from_conllu(word):
+                                if len(tmp_morpho_tag.split(morpho_tag_separator)) == 1:
+                                    tmp_morpho_tag = morpho_tag_separator.join([tmp_morpho_tag, "*UNKNOWN*"])
                                 morpho_tags += [list(map(fix_BLANK, [tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[
                                                      -1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]))]
                         tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
+                        if len(tmp_morpho_tag.split(morpho_tag_separator)) == 1:
+                            tmp_morpho_tag = morpho_tag_separator.join([tmp_morpho_tag, "*UNKNOWN*"])
                     morpho_tags += [list(map(fix_BLANK, [tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[-1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]))]
         elif morpho_tag_type.startswith('with_root'):
             if morpho_tag_column_index == 1:
