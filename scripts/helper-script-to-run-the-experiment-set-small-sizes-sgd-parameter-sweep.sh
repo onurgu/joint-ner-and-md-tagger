@@ -40,7 +40,7 @@ for trial in `seq 1 ${n_trials}`; do
 			test_filepath=turkish/gungor.ner.test.14.only_consistent \
 			$small_sizes \
 			lr_method=`printf "sgd-learning_rate_float@%.03lf" ${learning_rate}` \
-			max_epochs=10 \
+			maximum_epochs=10 \
 			experiment_name=${experiment_name} ;"
 			echo $command;
 		done

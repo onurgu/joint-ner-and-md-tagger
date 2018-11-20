@@ -39,6 +39,7 @@ def train(sys_argv):
                                 model_path=opts.model_path,
                                 model_epoch_dir_path=opts.model_epoch_path,
                                 overwrite_mappings=opts.overwrite_mappings)
+        parameters = model.parameters
     else:
         # Initialize model
         model = MainTaggerModel(opts=opts,
@@ -66,10 +67,11 @@ def train(sys_argv):
     # Train network
     #
 
-    n_epochs = opts.maximum_epochs  # number of epochs over the training set
+    starting_epoch_no = opts.starting_epoch_no
+    maximum_epoch_no = opts.maximum_epochs  # number of epochs over the training set
 
     tracked_epoch_window_width = 10
-    last_epoch_with_best_scores = 0
+    last_epoch_with_best_scores = 1
     last_N_epochs_avg_loss_values = [0] * tracked_epoch_window_width
     best_dev = -np.inf
     best_test = -np.inf
@@ -90,7 +92,7 @@ def train(sys_argv):
 
         return loss.value()
 
-    for epoch_no in range(n_epochs):
+    for epoch_no in range(starting_epoch_no, maximum_epoch_no+1):
         start_time = time.time()
         epoch_costs = []
         print("Starting epoch {}...".format(epoch_no))
@@ -145,7 +147,7 @@ def train(sys_argv):
         if model.parameters['active_models'] in [0, 2, 3]:
             if "dev" in f_scores["ner"]:
                 if best_dev < f_scores["ner"]["dev"]:
-                    print("NER Epoch: %d New best dev score => best_dev, best_test: %lf %lf" % (epoch_no + 1,
+                    print("NER Epoch: %d New best dev score => best_dev, best_test: %lf %lf" % (epoch_no,
                                                                                                        f_scores["ner"]["dev"],
                                                                                                        f_scores["ner"]["test"]))
                     last_epoch_with_best_scores = epoch_no
@@ -155,8 +157,10 @@ def train(sys_argv):
                     model.save_best_performances_and_costs(epoch_no,
                                                            best_performances=[f_scores["ner"]["dev"], f_scores["ner"]["test"]],
                                                            epoch_costs=epoch_costs)
+                    model_epoch_dir_path = "model-epoch-%08d" % epoch_no
+                    print("LOG: model_epoch_dir_path: {}".format(model_epoch_dir_path))
                 else:
-                    print("NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf" % (epoch_no + 1,
+                    print("NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf" % (epoch_no,
                                                                                                            best_dev,
                                                                                                            best_test))
 

@@ -455,6 +455,10 @@ def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
         type='int', help="Explicitly state to overwrite mappings"
     )
     optparser.add_option(
+        "--starting-epoch-no", default="1",
+        type='int', help="Starting epoch no for resuming training"
+    )
+    optparser.add_option(
         "--maximum-epochs", default="100",
         type='int', help="Maximum number of epochs"
     )

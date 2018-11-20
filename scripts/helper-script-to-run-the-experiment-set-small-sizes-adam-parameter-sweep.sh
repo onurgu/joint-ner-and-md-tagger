@@ -41,7 +41,7 @@ for trial in `seq 1 ${n_trials}`; do
 				$small_sizes \
 				lr_method=`printf "adam-alpha_float@%.03lf" ${learning_rate}` \
 				sparse_updates_enabled=${sparse_updates_enabled}
-				max_epochs=10 \
+				maximum_epochs=10 \
 				experiment_name=${experiment_name} ;"
 				echo $command;
 			done;

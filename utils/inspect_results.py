@@ -19,7 +19,7 @@ def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/", 
                 run["run"] = json.load(f)
 
             if attach_rundirs:
-                run["rundir"] = run_dir
+                run["run_dir"] = run_dir
 
             if campaign_name:
                 if run["config"]["experiment_name"] == campaign_name:
@@ -27,7 +27,8 @@ def find_runs_on_filesystem(campaign_name, logs_filepath="../experiment-logs/", 
             else:
                 runs.append(run)
         except IOError as e:
-            print(e)
+            pass
+            # print(e)
     return runs
 
 
@@ -240,7 +241,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--command", choices=["create_report", "grep_logdirs"], required=True)
+    parser.add_argument("--command", choices=["create_report", "grep_logdirs", "print_resumable_experiment_configurations"], required=True)
 
     parser.add_argument("--campaign_name", default="section1-all-20171013-01")
 
@@ -259,5 +260,41 @@ if __name__ == "__main__":
     elif args.command == "grep_logdirs":
         runs = find_runs_on_filesystem(args.campaign_name, logs_filepath=args.db_type, attach_rundirs=True)
         for run in runs:
-            print((run["run_dir"]))
+            output_line = [run["run_dir"]]
+            if "model_dir_path" in run["info"]:
+                output_line.append(run["info"]["model_dir_path"])
+            else:
+                output_line.append("")
+            if "model_epoch_dir_path" in run["info"]:
+                output_line.append(os.path.join(run["info"]["model_dir_path"], run["info"]["model_epoch_dir_path"]))
+            else:
+                output_line.append("")
+            sorted_epoch_nos = sorted([int(x) for x in run["info"]["avg_loss"].keys()])
+            if sorted_epoch_nos:
+                output_line.append(str(sorted_epoch_nos[-1]))
+            else:
+                output_line.append("1")
+            print(" ".join(output_line))
+    elif args.command == "print_resumable_experiment_configurations":
+        runs = find_runs_on_filesystem(args.campaign_name, logs_filepath=args.db_type, attach_rundirs=True)
+        for run in runs:
+            output_line = ["reload=1"]
+            if "model_dir_path" in run["info"]:
+                output_line.append("=".join(["model_path", run["info"]["model_dir_path"]]))
+            else:
+                output_line.append("")
+            if "model_epoch_dir_path" in run["info"]:
+                output_line.append("=".join(["model_epoch_path",
+                                             os.path.join(run["info"]["model_dir_path"], run["info"]["model_epoch_dir_path"])]))
+            else:
+                output_line.append("")
+            sorted_epoch_nos = sorted([int(x) for x in run["info"]["avg_loss"].keys()])
+            if sorted_epoch_nos:
+                output_line.append("=".join(["starting_epoch_no", str(sorted_epoch_nos[-1])]))
+            else:
+                output_line.append("starting_epoch_no=1")
+
+            output_line += run["run"]["meta"]["options"]["UPDATE"]
+
+            print(" ".join(output_line))
 

@@ -12,7 +12,10 @@ ex = Experiment('my_experiment')
 def my_config():
     skip_testing = 0
     reload = 0
-    max_epochs = 50
+    model_path = ""
+    model_epoch_path = ""
+    starting_epoch_no = 1
+    maximum_epochs = 50
 
     dynet_gpu = 0
 
@@ -106,7 +109,7 @@ def train_a_single_configuration(
         morpho_tag_column_index,
         word_dim,
         word_lstm_dim,
-        cap_dim, skip_testing, max_epochs,
+        cap_dim, skip_testing, starting_epoch_no, maximum_epochs,
         file_format,
         debug,
         ner_train_file,
@@ -121,7 +124,7 @@ def train_a_single_configuration(
         active_models,
         multilayer,
         shortcut_connections,
-        reload,
+        reload, model_path, model_epoch_path,
         dynet_gpu,
         _run):
 
@@ -162,6 +165,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                            "%s" \
                            "--skip-testing %d " \
                            "--tag_scheme iobes " \
+                           "--starting-epoch-no %d " \
                            "--maximum-epochs %d " % (lang_name, file_format,
                                                      datasets_root, lang_name, ner_train_file,
                                                      ("--ner_dev_file %s/%s/%s " % (datasets_root, lang_name, ner_dev_file)) if ner_dev_file else "",
@@ -171,7 +175,12 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                                                                                     md_dev_file)) if md_dev_file else "",
                                                      datasets_root, lang_name, md_test_file,
                                                      embeddings_part,
-                                                     skip_testing, max_epochs)
+                                                     skip_testing, starting_epoch_no, maximum_epochs)
+
+    if reload == 1:
+        reload_part = "--reload %d --model_path %s --model_epoch_path %s " % (reload, model_path, model_epoch_path)
+    else:
+        reload_part = "--reload 0 "
 
     commandline_args = always_constant_part + \
               "--crf %d " \
@@ -191,7 +200,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
               "--active_models %d " \
               "--multilayer %d " \
               "--shortcut_connections %d " \
-              "--reload %d" % (crf,
+              "%s" % (crf,
                                lr_method,
                                batch_size,
                                dropout,
@@ -208,7 +217,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                                active_models,
                                multilayer,
                                shortcut_connections,
-                               reload)
+                               reload_part)
 
     # tagger_root = "/media/storage/genie/turkish-ner/code/tagger"
 
@@ -264,7 +273,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
         # 1
         """
-        NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf 
+        NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf
         """
         for task_name in task_names:
             m = re.match("^%s Epoch: (\d+) .* best_dev, best_test: (.+) (.+)$" % task_name, line)
@@ -281,6 +290,22 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
             epoch = int(m.group(1))
             avg_loss_over_training_set = float(m.group(2))
             record_metric(epoch, "avg_loss", avg_loss_over_training_set)
+
+        """
+        MainTaggerModel location: ./models/model-00000227
+        """
+        m = re.match("^MainTaggerModel location: (.+)$", line)
+        if m:
+            model_dir_path = m.group(1)
+            _run.info["model_dir_path"] = model_dir_path
+
+        """
+        LOG: model_epoch_dir_path: {}
+        """
+        m = re.match("^LOG: model_epoch_dir_path: (.+)$", line)
+        if m:
+            model_epoch_dir_path = m.group(1)
+            _run.info["model_epoch_dir_path"] = model_epoch_dir_path
 
     for line in process.stdout:
         sys.stdout.write(line.decode("utf8"))
