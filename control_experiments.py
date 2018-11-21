@@ -276,7 +276,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf
         """
         for task_name in task_names:
-            m = re.match("^%s Epoch: (\d+) .* best_dev, best_test: (.+) (.+)$" % task_name, line)
+            m = re.match("^.*%s Epoch: (\d+) .* best_dev, best_test: (.+) (.+)$" % task_name, line)
             if m:
                 epoch = int(m.group(1))
                 best_dev = float(m.group(2))
@@ -285,7 +285,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                 record_metric(epoch, "%s_dev_f_score" % task_name, best_dev)
                 record_metric(epoch, "%s_test_f_score" % task_name, best_test)
 
-        m = re.match("^Epoch (\d+) Avg. loss over training set: (.+)$", line)
+        m = re.match("^.*Epoch (\d+) Avg. loss over training set: (.+)$", line)
         if m:
             epoch = int(m.group(1))
             avg_loss_over_training_set = float(m.group(2))
@@ -294,7 +294,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         """
         MainTaggerModel location: ./models/model-00000227
         """
-        m = re.match("^MainTaggerModel location: (.+)$", line)
+        m = re.match("^.*MainTaggerModel location: (.+)$", line)
         if m:
             model_dir_path = m.group(1)
             _run.info["model_dir_path"] = model_dir_path
@@ -302,7 +302,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         """
         LOG: model_epoch_dir_path: {}
         """
-        m = re.match("^LOG: model_epoch_dir_path: (.+)$", line)
+        m = re.match("^.*LOG: model_epoch_dir_path: (.+)$", line)
         if m:
             model_epoch_dir_path = m.group(1)
             _run.info["model_epoch_dir_path"] = model_epoch_dir_path
