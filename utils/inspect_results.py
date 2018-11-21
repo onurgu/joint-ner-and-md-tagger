@@ -1,6 +1,7 @@
 # coding: utf-8
 from IPython.display import display
 
+from collections import defaultdict
 import glob
 import os
 import json
@@ -277,7 +278,9 @@ if __name__ == "__main__":
             print(" ".join(output_line))
     elif args.command == "print_resumable_experiment_configurations":
         runs = find_runs_on_filesystem(args.campaign_name, logs_filepath=args.db_type, attach_rundirs=True)
+        output_lines = defaultdict(list)
         for run in runs:
+            # print(run["run_dir"])
             output_line = ["reload=1"]
             if "model_dir_path" in run["info"]:
                 output_line.append("=".join(["model_path", run["info"]["model_dir_path"]]))
@@ -294,7 +297,21 @@ if __name__ == "__main__":
             else:
                 output_line.append("starting_epoch_no=1")
 
-            output_line += run["run"]["meta"]["options"]["UPDATE"]
+            parameters_to_be_ignored = "debug maximum_epochs reload model_path model_epoch_path starting_epoch_no".split(" ")
 
-            print(" ".join(output_line))
+            output_line += [(key+"="+value) for key,value in [x.split("=") for x in run["run"]["meta"]["options"]["UPDATE"]] if key not in parameters_to_be_ignored]
+
+            """
+            model_epoch_path=./models/model-00000234/model-epoch-00000001 starting_epoch_no=11
+            """
+            output_line_dict = {key: value for key, value in [x.split("=") for x in output_line]}
+            output_line_key = " ".join(sorted([(key+"="+value) for key, value in [x.split("=") for x in output_line] if key not in ["model_epoch_path", "starting_epoch_no"]]))
+            output_lines[output_line_key].append([int(output_line_dict["starting_epoch_no"]), output_line])
+
+        for output_line_key in output_lines.keys():
+            output_line_tuples = output_lines[output_line_key]
+
+            output_line = sorted(output_line_tuples, key=lambda x: x[0], reverse=True)[0]
+
+            print(" ".join(output_line[1]))
 
