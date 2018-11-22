@@ -12,6 +12,7 @@ max_time=${5:-4-00:00:00}
 debug=${6:-0}
 target_languages=${7:-czech spanish finnish hungarian turkish}
 extra_arguments_to_be_added_to_every_job_line=$8
+extra_arguments_to_be_added_to_every_job_line="$extra_arguments_to_be_added_to_every_job_line ;"
 
 sub_job_id=0
 max_jobs_to_submit=1000
@@ -25,10 +26,10 @@ bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-lan
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id
 	echo $max_jobs_to_submit
-	echo $line
+	echo $line $extra_arguments_to_be_added_to_every_job_line
 
 	# experiment_name=XXX-dim-10-morpho_tag_type-char
-	job_id=`echo ${line} | awk '{ match($0, /.* experiment_name=([^ ]+) /, arr); printf "%s", arr[1]; }'`
+	job_id=`echo ${line} $extra_arguments_to_be_added_to_every_job_line | awk '{ match($0, /.* experiment_name=([^ ]+) /, arr); printf "%s", arr[1]; }'`
 
     n_current_jobs=$(squeue -o '%i' -h | wc -l)
     while [[ n_current_jobs -ge 100 ]]; do
