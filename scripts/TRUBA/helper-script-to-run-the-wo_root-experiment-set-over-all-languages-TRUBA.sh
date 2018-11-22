@@ -64,7 +64,7 @@ for trial in `seq 1 ${n_trials}`; do
                 embeddings_filepath=\""${pretrained_embeddings}"\" \
                 ${dataset_filepaths} \
                 $small_sizes \
-                experiment_name=${experiment_name} ;"
+                experiment_name=${experiment_name} "
                 echo $command;
 
             done

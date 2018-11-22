@@ -11,6 +11,7 @@ max_time=${5:-4-00:00:00}
 
 debug=${6:-0}
 target_languages=${7:-czech spanish finnish hungarian turkish}
+extra_arguments_to_be_added_to_every_job_line=$8
 
 sub_job_id=0
 max_jobs_to_submit=1000
@@ -37,14 +38,14 @@ bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-lan
     done
 
 	echo '#!/bin/bash' > ${rundir_path}/batch-script-${job_id}.sh
-	echo $line >> ${rundir_path}/batch-script-${job_id}.sh
+	echo $line $extra_arguments_to_be_added_to_every_job_line >> ${rundir_path}/batch-script-${job_id}.sh
 
 	RES=$(sbatch -A ogungor -J ${job_id} -p ${partition_name} -c ${core_per_job} --time=${max_time} --mail-type=END --mail-user=onurgu@boun.edu.tr ${rundir_path}/batch-script-${job_id}.sh)
 	SLURM_JOB_ID=${RES##* }
 
 	echo SLURM_JOB_ID ${SLURM_JOB_ID} sleeping for 120 seconds to allow time to FileStorageObserver
 	echo ${SLURM_JOB_ID} ${sub_job_id} >> ${rundir_path}/slurm_job_ids.${job_id}.txt
-	echo ${line} >> ${rundir_path}/slurm_job_ids.${job_id}.txt
+	echo ${line} $extra_arguments_to_be_added_to_every_job_line >> ${rundir_path}/slurm_job_ids.${job_id}.txt
 	sleep 120
 
 	if [[ sub_job_id -eq max_jobs_to_submit ]]; then
