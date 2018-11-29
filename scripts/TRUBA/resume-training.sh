@@ -13,9 +13,9 @@ fi
 echo $0
 rundir_path=`dirname $0`
 
-partition_name=${5:-mid1}
-core_per_job=${6:-8}
-max_time=${7:-4-00:00:00}
+partition_name=${6:-mid1}
+core_per_job=${7:-8}
+max_time=${8:-4-00:00:00}
 
 sub_job_id=0
 max_jobs_to_submit=1000
