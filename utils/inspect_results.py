@@ -281,32 +281,37 @@ if __name__ == "__main__":
         output_lines = defaultdict(list)
         for run in runs:
             # print(run["run_dir"])
-            output_line = ["reload=1"]
+            reload = 1
+            output_line = []
             if "model_dir_path" in run["info"]:
                 output_line.append("=".join(["model_path", run["info"]["model_dir_path"]]))
             else:
-                output_line.append("")
+                reload = 0
             if "model_epoch_dir_path" in run["info"]:
                 output_line.append("=".join(["model_epoch_path",
                                              os.path.join(run["info"]["model_dir_path"], run["info"]["model_epoch_dir_path"])]))
             else:
-                output_line.append("")
-            sorted_epoch_nos = sorted([int(x) for x in run["info"]["avg_loss"].keys()])
-            if sorted_epoch_nos:
-                output_line.append("=".join(["starting_epoch_no", str(sorted_epoch_nos[-1])]))
+                reload = 0
+            if reload == 0:
+                break
             else:
-                output_line.append("starting_epoch_no=1")
+                output_line.append("reload=%d" % reload)
+                sorted_epoch_nos = sorted([int(x) for x in run["info"]["avg_loss"].keys()])
+                if sorted_epoch_nos:
+                    output_line.append("=".join(["starting_epoch_no", str(sorted_epoch_nos[-1])]))
+                else:
+                    output_line.append("starting_epoch_no=1")
 
-            parameters_to_be_ignored = "debug maximum_epochs reload model_path model_epoch_path starting_epoch_no".split(" ")
+                parameters_to_be_ignored = "debug maximum_epochs reload model_path model_epoch_path starting_epoch_no".split(" ")
 
-            output_line += [(key+"="+value) for key,value in [x.split("=") for x in run["run"]["meta"]["options"]["UPDATE"]] if key not in parameters_to_be_ignored]
+                output_line += [(key+"="+value) for key,value in [x.split("=") for x in run["run"]["meta"]["options"]["UPDATE"]] if key not in parameters_to_be_ignored]
 
-            """
-            model_epoch_path=./models/model-00000234/model-epoch-00000001 starting_epoch_no=11
-            """
-            output_line_dict = {key: value for key, value in [x.split("=") for x in output_line]}
-            output_line_key = " ".join(sorted([(key+"="+value) for key, value in [x.split("=") for x in output_line] if key not in ["model_epoch_path", "starting_epoch_no"]]))
-            output_lines[output_line_key].append([int(output_line_dict["starting_epoch_no"]), output_line])
+                """
+                model_epoch_path=./models/model-00000234/model-epoch-00000001 starting_epoch_no=11
+                """
+                output_line_dict = {key: value for key, value in [x.split("=") for x in output_line]}
+                output_line_key = " ".join(sorted([(key+"="+value) for key, value in [x.split("=") for x in output_line] if key not in ["model_epoch_path", "starting_epoch_no"]]))
+                output_lines[output_line_key].append([int(output_line_dict["starting_epoch_no"]), output_line])
 
         for output_line_key in output_lines.keys():
             output_line_tuples = output_lines[output_line_key]
