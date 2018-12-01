@@ -297,196 +297,210 @@ def create_input(data, parameters, add_label, singletons=None):
     return input
 
 
-def read_args(evaluation=False, args_as_a_list=sys.argv[1:]):
+def read_args(evaluation=False, args_as_a_list=sys.argv[1:], for_xnlp=False):
     optparser = optparse.OptionParser()
 
-    for label in ["ner", "md"]:
+    if for_xnlp:
         optparser.add_option(
-            "--{label}_train_file".format(label=label), default="",
-            help="Train set location"
+            "-r", "--reload", default="0",
+            type='int', help="Reload the last saved model"
         )
         optparser.add_option(
-            "--{label}_dev_file".format(label=label), default="",
-            help="Dev set location"
+            "--model_path", default="",
+            type='str', help="Model path must be given when a reload is requested"
         )
         optparser.add_option(
-            "--{label}_test_file".format(label=label), default="",
-            help="Test set location"
+            "--model_epoch_path", default="",
+            type='str', help="Model epoch path must be given when a reload is requested"
+        )
+    else:
+        for label in ["ner", "md"]:
+            optparser.add_option(
+                "--{label}_train_file".format(label=label), default="",
+                help="Train set location"
+            )
+            optparser.add_option(
+                "--{label}_dev_file".format(label=label), default="",
+                help="Dev set location"
+            )
+            optparser.add_option(
+                "--{label}_test_file".format(label=label), default="",
+                help="Test set location"
+            )
+
+        optparser.add_option(
+            "--lang_name", default="turkish",
+            help="langugage name"
         )
 
-    optparser.add_option(
-        "--lang_name", default="turkish",
-        help="langugage name"
-    )
-
-    optparser.add_option(
-        "--use_golden_morpho_analysis_in_word_representation", default=False, action="store_true",
-        help="use golden morpho analysis when representing words"
-    )
-    optparser.add_option(
-        "-s", "--tag_scheme", default="iobes",
-        help="Tagging scheme (IOB or IOBES)"
-    )
-    optparser.add_option(
-        "-l", "--lower", default="0",
-        type='int', help="Lowercase words (this will not affect character inputs)"
-    )
-    optparser.add_option(
-        "-z", "--zeros", default="0",
-        type='int', help="Replace digits with 0"
-    )
-    optparser.add_option(
-        "-c", "--char_dim", default="25",
-        type='int', help="Char embedding dimension"
-    )
-    optparser.add_option(
-        "-C", "--char_lstm_dim", default="25",
-        type='int', help="Char LSTM hidden layer size"
-    )
-    optparser.add_option(
-        "-b", "--char_bidirect", default="1",
-        type='int', help="Use a bidirectional LSTM for chars"
-    )
-    # morpho_tag section
-    optparser.add_option(
-        "--morpho_tag_dim", default="100",
-        type='int', help="Morpho tag embedding dimension"
-    )
-    optparser.add_option(
-        "--morpho_tag_lstm_dim", default="100",
-        type='int', help="Morpho tag LSTM hidden layer size"
-    )
-    optparser.add_option(
-        "--morpho_tag_bidirect", default="1",
-        type='int', help="Use a bidirectional LSTM for morpho tags"
-    )
-    optparser.add_option(
-        "--morpho_tag_type", default="char",
-        help="Mode of morphological tag extraction"
-    )
-    optparser.add_option(
-        "--morpho-tag-column-index", default="1",
-        type='int', help="the index of the column which contains the morphological tags in the conll format"
-    )
-    optparser.add_option(
-        "--integration_mode", default="0",
-        type='int', help="integration mode"
-    )
-    optparser.add_option(
-        "--active_models", default="0",
-        type='int', help="active models: 0: NER, 1: MD, 2: JOINT"
-    )
-    optparser.add_option(
-        "--multilayer", default="0",
-        type='int', help="use a multilayered sentence level Bi-LSTM"
-    )
-    optparser.add_option(
-        "--shortcut_connections", default="0",
-        type='int', help="use shortcut connections in the multilayered scheme"
-    )
-    optparser.add_option(
-        "--tying_method", default="",
-        help="tying method"
-    )
-    optparser.add_option(
-        "-w", "--word_dim", default="100",
-        type='int', help="Token embedding dimension"
-    )
-    optparser.add_option(
-        "-W", "--word_lstm_dim", default="100",
-        type='int', help="Token LSTM hidden layer size"
-    )
-    optparser.add_option(
-        "-B", "--word_bidirect", default="1",
-        type='int', help="Use a bidirectional LSTM for words"
-    )
-    optparser.add_option(
-        "-p", "--pre_emb", default="",
-        help="Location of pretrained embeddings"
-    )
-    optparser.add_option(
-        "-A", "--all_emb", default="0",
-        type='int', help="Load all embeddings"
-    )
-    optparser.add_option(
-        "-a", "--cap_dim", default="0",
-        type='int', help="Capitalization feature dimension (0 to disable)"
-    )
-    optparser.add_option(
-        "-f", "--crf", default="1",
-        type='int', help="Use CRF (0 to disable)"
-    )
-    optparser.add_option(
-        "-D", "--dropout", default="0.5",
-        type='float', help="Droupout on the input (0 = no dropout)"
-    )
-    optparser.add_option(
-        "-L", "--lr_method", default="adam-alpha_float@0.005",
-        help="Learning method (SGD, Adadelta, Adam..)"
-    )
-    optparser.add_option(
-        "--disable_sparse_updates", default=True, action="store_false",
-        dest="sparse_updates_enabled",
-        help="Sparse updates enabled"
-    )
-    optparser.add_option(
-        "-r", "--reload", default="0",
-        type='int', help="Reload the last saved model"
-    )
-    optparser.add_option(
-        "--model_path", default="",
-        type='str', help="Model path must be given when a reload is requested"
-    )
-    optparser.add_option(
-        "--model_epoch_path", default="",
-        type='str', help="Model epoch path must be given when a reload is requested"
-    )
-    optparser.add_option(
-        "--skip-testing", default="0",
-        type='int',
-        help="Skip the evaluation on test set (because dev and test sets are the same and thus testing is irrelevant)"
-    )
-    optparser.add_option(
-        "--predict-and-exit-filename", default="",
-        help="Used with '--reload 1', the loaded model is used for predicting on the test set and the results are written to the filename"
-    )
-    optparser.add_option(
-        "--overwrite-mappings", default="0",
-        type='int', help="Explicitly state to overwrite mappings"
-    )
-    optparser.add_option(
-        "--starting-epoch-no", default="1",
-        type='int', help="Starting epoch no for resuming training"
-    )
-    optparser.add_option(
-        "--maximum-epochs", default="100",
-        type='int', help="Maximum number of epochs"
-    )
-    optparser.add_option(
-        "--batch-size", default="5",
-        type='int', help="Number of samples in one epoch"
-    )
-    optparser.add_option(
-        "--file_format", default="conll", choices=["conll", "conllu"],
-        help="File format of the data files"
-    )
-    optparser.add_option(
-        "--debug", default="0",
-        type='int', help="whether to print lots of debugging info."
-    )
-    optparser.add_option(
-        "--dynet-gpu", default="1",
-        type='int', help="Use gpu or not"
-    )
-    optparser.add_option(
-        "--port", default="8888",
-        type='int', help="Webapp port to serve on localhost"
-    )
-    if evaluation:
         optparser.add_option(
-            "--run-for-all-checkpoints", default="0",
-            type='int', help="run evaluation for all checkpoints"
+            "--use_golden_morpho_analysis_in_word_representation", default=False, action="store_true",
+            help="use golden morpho analysis when representing words"
         )
+        optparser.add_option(
+            "-s", "--tag_scheme", default="iobes",
+            help="Tagging scheme (IOB or IOBES)"
+        )
+        optparser.add_option(
+            "-l", "--lower", default="0",
+            type='int', help="Lowercase words (this will not affect character inputs)"
+        )
+        optparser.add_option(
+            "-z", "--zeros", default="0",
+            type='int', help="Replace digits with 0"
+        )
+        optparser.add_option(
+            "-c", "--char_dim", default="25",
+            type='int', help="Char embedding dimension"
+        )
+        optparser.add_option(
+            "-C", "--char_lstm_dim", default="25",
+            type='int', help="Char LSTM hidden layer size"
+        )
+        optparser.add_option(
+            "-b", "--char_bidirect", default="1",
+            type='int', help="Use a bidirectional LSTM for chars"
+        )
+        # morpho_tag section
+        optparser.add_option(
+            "--morpho_tag_dim", default="100",
+            type='int', help="Morpho tag embedding dimension"
+        )
+        optparser.add_option(
+            "--morpho_tag_lstm_dim", default="100",
+            type='int', help="Morpho tag LSTM hidden layer size"
+        )
+        optparser.add_option(
+            "--morpho_tag_bidirect", default="1",
+            type='int', help="Use a bidirectional LSTM for morpho tags"
+        )
+        optparser.add_option(
+            "--morpho_tag_type", default="char",
+            help="Mode of morphological tag extraction"
+        )
+        optparser.add_option(
+            "--morpho-tag-column-index", default="1",
+            type='int', help="the index of the column which contains the morphological tags in the conll format"
+        )
+        optparser.add_option(
+            "--integration_mode", default="0",
+            type='int', help="integration mode"
+        )
+        optparser.add_option(
+            "--active_models", default="0",
+            type='int', help="active models: 0: NER, 1: MD, 2: JOINT"
+        )
+        optparser.add_option(
+            "--multilayer", default="0",
+            type='int', help="use a multilayered sentence level Bi-LSTM"
+        )
+        optparser.add_option(
+            "--shortcut_connections", default="0",
+            type='int', help="use shortcut connections in the multilayered scheme"
+        )
+        optparser.add_option(
+            "--tying_method", default="",
+            help="tying method"
+        )
+        optparser.add_option(
+            "-w", "--word_dim", default="100",
+            type='int', help="Token embedding dimension"
+        )
+        optparser.add_option(
+            "-W", "--word_lstm_dim", default="100",
+            type='int', help="Token LSTM hidden layer size"
+        )
+        optparser.add_option(
+            "-B", "--word_bidirect", default="1",
+            type='int', help="Use a bidirectional LSTM for words"
+        )
+        optparser.add_option(
+            "-p", "--pre_emb", default="",
+            help="Location of pretrained embeddings"
+        )
+        optparser.add_option(
+            "-A", "--all_emb", default="0",
+            type='int', help="Load all embeddings"
+        )
+        optparser.add_option(
+            "-a", "--cap_dim", default="0",
+            type='int', help="Capitalization feature dimension (0 to disable)"
+        )
+        optparser.add_option(
+            "-f", "--crf", default="1",
+            type='int', help="Use CRF (0 to disable)"
+        )
+        optparser.add_option(
+            "-D", "--dropout", default="0.5",
+            type='float', help="Droupout on the input (0 = no dropout)"
+        )
+        optparser.add_option(
+            "-L", "--lr_method", default="adam-alpha_float@0.005",
+            help="Learning method (SGD, Adadelta, Adam..)"
+        )
+        optparser.add_option(
+            "--disable_sparse_updates", default=True, action="store_false",
+            dest="sparse_updates_enabled",
+            help="Sparse updates enabled"
+        )
+        optparser.add_option(
+            "-r", "--reload", default="0",
+            type='int', help="Reload the last saved model"
+        )
+        optparser.add_option(
+            "--model_path", default="",
+            type='str', help="Model path must be given when a reload is requested"
+        )
+        optparser.add_option(
+            "--model_epoch_path", default="",
+            type='str', help="Model epoch path must be given when a reload is requested"
+        )
+        optparser.add_option(
+            "--skip-testing", default="0",
+            type='int',
+            help="Skip the evaluation on test set (because dev and test sets are the same and thus testing is irrelevant)"
+        )
+        optparser.add_option(
+            "--predict-and-exit-filename", default="",
+            help="Used with '--reload 1', the loaded model is used for predicting on the test set and the results are written to the filename"
+        )
+        optparser.add_option(
+            "--overwrite-mappings", default="0",
+            type='int', help="Explicitly state to overwrite mappings"
+        )
+        optparser.add_option(
+            "--starting-epoch-no", default="1",
+            type='int', help="Starting epoch no for resuming training"
+        )
+        optparser.add_option(
+            "--maximum-epochs", default="100",
+            type='int', help="Maximum number of epochs"
+        )
+        optparser.add_option(
+            "--batch-size", default="5",
+            type='int', help="Number of samples in one epoch"
+        )
+        optparser.add_option(
+            "--file_format", default="conll", choices=["conll", "conllu"],
+            help="File format of the data files"
+        )
+        optparser.add_option(
+            "--debug", default="0",
+            type='int', help="whether to print lots of debugging info."
+        )
+        optparser.add_option(
+            "--dynet-gpu", default="1",
+            type='int', help="Use gpu or not"
+        )
+        optparser.add_option(
+            "--port", default="8888",
+            type='int', help="Webapp port to serve on localhost"
+        )
+        if evaluation:
+            optparser.add_option(
+                "--run-for-all-checkpoints", default="0",
+                type='int', help="run evaluation for all checkpoints"
+            )
     opts = optparser.parse_args(args_as_a_list)[0]
     return opts
 
@@ -537,10 +551,10 @@ def form_parameters_dict(opts):
 
 def read_parameters_from_file(filepath, opts_filepath):
 
-    with open(filepath, "r") as f:
+    with open(filepath, "rb") as f:
         parameters = pickle.load(f)
 
-    with open(opts_filepath, "r") as f:
+    with open(opts_filepath, "rb") as f:
         opts = pickle.load(f)
 
     return parameters, opts

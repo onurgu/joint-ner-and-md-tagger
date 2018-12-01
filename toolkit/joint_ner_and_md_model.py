@@ -75,9 +75,9 @@ class MainTaggerModel(object):
             assert parameters is None and opts is None and models_path and model_path and model_epoch_dir_path
             # MainTaggerModel location
             self.model_path = model_path
-            self.parameters_path = os.path.join(model_path, 'parameters.pkl')
-            self.mappings_path = os.path.join(model_path, 'mappings.pkl')
-            self.opts_path = os.path.join(model_path, 'opts.pkl')
+            self.parameters_path = os.path.join(models_path, model_path, 'parameters.pkl')
+            self.mappings_path = os.path.join(models_path, model_path, 'mappings.pkl')
+            self.opts_path = os.path.join(models_path, model_path, 'opts.pkl')
             # Load the parameters and the mappings from disk
             with open(self.parameters_path, 'rb') as f:
                 self.parameters = pickle.load(f)

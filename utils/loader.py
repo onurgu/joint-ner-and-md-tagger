@@ -969,7 +969,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     # print 'Saving the mappings to disk...'
     # model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
 
-    return data_dict, id_to_tag, word_to_id, stats_dict
+    return data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
 
     # if for_training:
     #     return data_dict, id_to_tag, word_to_id, stats_dict, parameters['t_s']

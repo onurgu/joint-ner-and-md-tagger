@@ -54,7 +54,7 @@ def train(sys_argv):
     # train_data, train_stats, word_to_id, \
     # yuret_test_data, yuret_train_data = prepare_datasets(model, opts, parameters)
 
-    data_dict, id_to_tag, word_to_id, stats_dict = prepare_datasets(model, opts, parameters)
+    data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag = prepare_datasets(model, opts, parameters)
 
     batch_size = opts.batch_size
 

@@ -207,6 +207,34 @@ def eval_with_specific_model(model,
     return f_scores, disambiguation_accuracies, datasets_with_predicted_labels
 
 
+def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
+
+    model, opts, parameters = initialize_model_with_pretrained_parameters(model_dir_path,
+                                                                          model_epoch_dir_path,
+                                                                          models_dir_path)
+
+    print(opts)
+    print(parameters)
+
+    for arg_name in opts.__dict__.keys():
+        if type(opts.__dict__[arg_name]) == str:
+            opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
+                                                                  "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/")
+
+    print(opts)
+    # Prepare the data
+    # dev_data, dico_words_train, \
+    # id_to_tag, tag_scheme, test_data, \
+    # train_data, train_stats, word_to_id, \
+    # yuret_test_data, yuret_train_data
+    data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag = prepare_datasets(model,
+                                                     opts,
+                                                     parameters,
+                                                     for_training=False)
+
+    return model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
+
+
 def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_path):
 
     model, opts, parameters = initialize_model_with_pretrained_parameters(model_dir_path,
@@ -305,14 +333,14 @@ def predict_tags_given_model_and_input(datasets_to_be_tested,
 def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_path, models_dir_path):
     import os
     from utils import read_parameters_from_file
-    parameters, opts = read_parameters_from_file(os.path.join(model_dir_path, "parameters.pkl"),
-                                                 os.path.join(model_dir_path, "opts.pkl"))
+    parameters, opts = read_parameters_from_file(os.path.join(models_dir_path, model_dir_path, "parameters.pkl"),
+                                                 os.path.join(models_dir_path, model_dir_path, "opts.pkl"))
     model = MainTaggerModel(models_path=models_dir_path,
                             model_path=model_dir_path,
                             model_epoch_dir_path=model_epoch_dir_path)
     # Build the model
     model.build(training=False, **parameters)
-    model.reload(model_epoch_dir_path)
+    model.reload(os.path.join(models_dir_path, model_dir_path, model_epoch_dir_path))
     return model, opts, parameters
 
 
@@ -325,6 +353,21 @@ def evaluate(sys_argv):
     from utils.train import models_path
 
     evaluate_model_dir_path(
+        models_dir_path=models_path,
+        model_dir_path=opts.model_path,
+        model_epoch_dir_path=opts.model_epoch_path
+    )
+
+
+def xnlp_experiments(sys_argv):
+
+    from utils import read_args
+
+    opts = read_args(args_as_a_list=sys_argv[1:], for_xnlp=True)
+
+    from utils.train import models_path
+
+    model, data_dict, id_to_tag, word_to_id, stats_dict = do_xnlp(
         models_dir_path=models_path,
         model_dir_path=opts.model_path,
         model_epoch_dir_path=opts.model_epoch_path
