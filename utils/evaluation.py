@@ -211,7 +211,8 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
 
     model, opts, parameters = initialize_model_with_pretrained_parameters(model_dir_path,
                                                                           model_epoch_dir_path,
-                                                                          models_dir_path)
+                                                                          models_dir_path,
+                                                                          overwrite_mappings=1)
 
     print(opts)
     print(parameters)
@@ -230,9 +231,83 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
     data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag = prepare_datasets(model,
                                                      opts,
                                                      parameters,
-                                                     for_training=False)
+                                                     for_training=True)
 
-    return model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
+    return model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag, opts, parameters
+
+
+def test_multi_token_extraction():
+    l = list(extract_multi_token_entities("B-PER I-PER E-PER".split(" ")))
+
+    assert l[0][0] == 0, l
+    assert l[0][1] == 3, l
+    assert l[0][2] == "PER", l
+
+    l = list(extract_multi_token_entities("B-PER E-PER".split(" ")))
+
+    assert l[0][0] == 0, l
+    assert l[0][1] == 2, l
+    assert l[0][2] == "PER", l
+
+    l = list(extract_multi_token_entities("B-PER E-PER O S-LOC O O B-LOC I-LOC E-LOC".split(" ")))
+
+    assert l[0][0] == 0, l
+    assert l[0][1] == 2, l
+    assert l[0][2] == "PER", l
+
+    assert l[1][0] == 3, l
+    assert l[1][1] == 4, l
+    assert l[1][2] == "LOC", l
+
+    assert l[2][0] == 6, l
+    assert l[2][1] == 9, l
+    assert l[2][2] == "LOC", l
+
+    assert len(l) == 0, str(l)
+
+
+def extract_multi_token_entities(tag_sequence):
+
+    cur_entity = [0, 0, ""] # start, end, entity name
+    is_parsing_an_entity = False
+    prev_tag = "O"
+    prev_type = ""
+    for idx, tag in enumerate(tag_sequence):
+        if is_parsing_an_entity:
+            if tag.startswith("I-"):
+                if prev_tag != "B-":
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                if prev_type != tag.replace("I-", ""):
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                prev_tag = "I-"
+            elif tag.startswith("E-"):
+                if prev_tag != "I-" and prev_tag != "B-":
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                if prev_type != tag.replace("E-", ""):
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                cur_entity[1] = idx + 1
+                yield [e for e in cur_entity]
+                cur_entity = [0, 0, ""]
+                prev_tag = "E-"
+                is_parsing_an_entity = False
+            else:
+                raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+        else:
+            if tag == "O":
+                prev_tag = "O"
+                continue
+            elif tag.startswith("S-"):
+                yield [idx, idx+1, tag.replace("S-", "")]
+                prev_tag = "S-"
+            elif tag.startswith("B-"):
+                cur_entity[0] = idx
+                cur_entity[2] = tag.replace("B-", "")
+                is_parsing_an_entity = True
+                prev_tag = "B-"
+                prev_type = tag.replace("B-", "")
+            else:
+                raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+
 
 
 def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_path):
@@ -330,14 +405,15 @@ def predict_tags_given_model_and_input(datasets_to_be_tested,
     return f_scores, morph_accuracies, labeled_sentences
 
 
-def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_path, models_dir_path):
+def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_path, models_dir_path, overwrite_mappings=0):
     import os
     from utils import read_parameters_from_file
     parameters, opts = read_parameters_from_file(os.path.join(models_dir_path, model_dir_path, "parameters.pkl"),
                                                  os.path.join(models_dir_path, model_dir_path, "opts.pkl"))
     model = MainTaggerModel(models_path=models_dir_path,
                             model_path=model_dir_path,
-                            model_epoch_dir_path=model_epoch_dir_path)
+                            model_epoch_dir_path=model_epoch_dir_path,
+                            overwrite_mappings=overwrite_mappings)
     # Build the model
     model.build(training=False, **parameters)
     model.reload(os.path.join(models_dir_path, model_dir_path, model_epoch_dir_path))

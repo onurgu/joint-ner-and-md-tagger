@@ -28,7 +28,6 @@ class MainTaggerModel(object):
     id_to_tag = {}  # type: dict
     id_to_morpho_tag = {} # type: dict
 
-
     saver = None  # type: DynetSaver
 
     def __init__(self, opts=None, parameters=None, models_path=None, model_path=None, model_epoch_dir_path=None,
@@ -37,6 +36,8 @@ class MainTaggerModel(object):
         Initialize the model. We either provide the parameters and a path where
         we store the models, or the location of a trained model.
         """
+
+        self.entity_types = set()
 
         self.training = True
         self.n_bests = 0
@@ -319,6 +320,8 @@ class MainTaggerModel(object):
         n_chars = len(self.id_to_char)
         n_tags = len(self.id_to_tag)
         n_morpho_tags = len(self.id_to_morpho_tag)
+
+        self.entity_types = set([t.replace("B-", "") for t in self.id_to_tag.values() if t.startswith("B-")])
 
         # Number of capitalization features
         if cap_dim:
@@ -661,29 +664,105 @@ class MainTaggerModel(object):
                 both are available. The latter one is only possible for Turkish.
             """
 
-            context_representations_for_ner_loss, context_representations_for_md_loss = \
-                self.get_context_representations(sentence)
-
-            last_layer_context_representations, md_loss, _ = \
-                self.get_last_layer_context_representations(sentence,
-                                                            context_representations_for_ner_loss,
-                                                            context_representations_for_md_loss)
-            if self.parameters['active_models'] in [0, 2, 3]: # 0: NER, 1: MD, 2: JOINT, 3: JOINT_MULTILAYER
-                tag_scores = self.calculate_tag_scores(last_layer_context_representations)
-
-                if len(sentence['tag_ids']) > 0:
-                    crf_loss = self.crf_module.neg_log_loss(tag_scores, sentence['tag_ids'])
-                else:
-                    crf_loss = dynet.scalarInput(0)
-
-                if crf_loss.value() > 1000:
-                    logging.error("BEEP")
-                loss_array.append(crf_loss)
-
-            if self.parameters['active_models'] in [1, 2, 3]:
-                loss_array.append(md_loss)
+            losses_for_sentence, _ = self._get_loss(sentence)
+            loss_array += losses_for_sentence
 
         return dynet.esum(loss_array)
+
+    def _get_loss(self, sentence):
+        loss_array = []
+        context_representations_for_ner_loss, context_representations_for_md_loss = \
+            self.get_context_representations(sentence)
+        last_layer_context_representations, md_loss, _ = \
+            self.get_last_layer_context_representations(sentence,
+                                                        context_representations_for_ner_loss,
+                                                        context_representations_for_md_loss)
+        if self.parameters['active_models'] in [0, 2, 3]:  # 0: NER, 1: MD, 2: JOINT, 3: JOINT_MULTILAYER
+            tag_scores = self.calculate_tag_scores(last_layer_context_representations)
+
+            if len(sentence['tag_ids']) > 0:
+                crf_loss = self.crf_module.neg_log_loss(tag_scores, sentence['tag_ids'])
+            else:
+                crf_loss = dynet.scalarInput(0)
+
+            if crf_loss.value() > 1000:
+                logging.error("BEEP")
+            loss_array.append(crf_loss)
+
+        if self.parameters['active_models'] in [1, 2, 3]:
+            loss_array.append(md_loss)
+
+        return loss_array, tag_scores
+
+    def _predict_for_xnlp(self, sentence):
+
+        context_representations_for_ner_loss, context_representations_for_md_loss = \
+            self.get_context_representations(sentence)
+        last_layer_context_representations, _, _ = \
+            self.get_last_layer_context_representations(sentence,
+                                                        context_representations_for_ner_loss,
+                                                        context_representations_for_md_loss)
+        if self.parameters['active_models'] in [0, 2, 3]:  # 0: NER, 1: MD, 2: JOINT, 3: JOINT_MULTILAYER
+            tag_scores = self.calculate_tag_scores(last_layer_context_representations)
+
+            observations = [dynet.concatenate([obs, dynet.inputVector([-1e10, -1e10])], d=0) for obs in
+                            tag_scores]
+            decoded_tags, _ = self.crf_module.viterbi_decoding(observations)
+
+            return tag_scores, decoded_tags
+
+        return None, None
+
+    def _valid_path_probs(self, tag_scores):
+        def log_sum_exp(scores):
+            npval = scores.npvalue()
+            argmax_score = np.argmax(npval)
+            max_score_expr = dynet.pick(scores, argmax_score)
+            max_score_expr_broadcast = dynet.concatenate([max_score_expr] * (npval.shape[0]))
+            return max_score_expr + dynet.log(
+                dynet.sum_dim(dynet.transpose(dynet.exp(scores - max_score_expr_broadcast)), [1]))
+
+        valid_paths = self._obtain_valid_paths(len(tag_scores))
+        print(valid_paths)
+        tag_to_id = {tag: id for id, tag in self.id_to_tag.items()}
+        valid_paths = [[tag_to_id[t] for t in valid_path] for valid_path in valid_paths]
+        print(valid_paths)
+
+        valid_path_scores = []
+        for valid_path in valid_paths:
+            node_scores = []
+            for idx, n in enumerate(valid_path):
+                node_scores.append(tag_scores[idx][n].value())
+            path_score = log_sum_exp(dynet.inputVector(node_scores))
+            valid_path_scores.append(path_score)
+        valid_path_probs = [s.value()/float(dynet.esum(valid_path_scores).value()) for s in valid_path_scores]
+        return valid_path_probs
+
+    def _obtain_valid_paths(self, sequence_length):
+
+        if sequence_length == 0:
+            # yield []
+            pass  # do not yield
+        elif sequence_length == 1:
+            for entity_type in self.entity_types:
+                yield ["S-%s" % entity_type]
+        else:
+            for entity_type in self.entity_types:
+                for right_valid_path in self._obtain_valid_paths(sequence_length - 1):
+                    yield ["S-%s" % entity_type] + right_valid_path
+            for l in range(2, sequence_length + 1):
+                valid_path = [""] * l
+                valid_path[0] = "B-%s"
+                for i in range(1, l):
+                    valid_path[i] = "I-%s"
+                valid_path[-1] = "E-%s"
+                for entity_type in self.entity_types:
+                    for right_valid_path in self._obtain_valid_paths(sequence_length - l):
+                        # yield ["tag1"] + right_valid_path
+                        yield [(x % entity_type) for x in valid_path] + right_valid_path
+                    if l == sequence_length:
+                        # yield ["tag2"] + [l, sequence_length]
+                        yield [(x % entity_type) for x in valid_path]
 
     def calculate_tag_scores(self, context_representations):
 
