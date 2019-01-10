@@ -19,7 +19,7 @@ preamble="cd ${ner_tagger_root} && \
           source ${environment_variables_path} && \
           python control_experiments.py ${sacred_args} with debug=${debug} "
 
-n_trials=5
+n_trials=${6:-5}
 
 dim=${2:-10}
 
