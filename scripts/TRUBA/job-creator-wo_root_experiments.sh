@@ -11,9 +11,9 @@ max_time=${5:-4-00:00:00}
 
 debug=${6:-0}
 target_languages=${7:-czech spanish finnish hungarian turkish}
-extra_arguments_to_be_added_to_every_job_line=$8
+n_trials=${8}
+extra_arguments_to_be_added_to_every_job_line=$9
 extra_arguments_to_be_added_to_every_job_line="$extra_arguments_to_be_added_to_every_job_line ;"
-trials=${9}
 
 sub_job_id=0
 max_jobs_to_submit=1000
@@ -22,7 +22,7 @@ max_jobs_to_submit=1000
 
 #echo $jobs_line_by_line | while read line; do
 
-bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ./scripts/TRUBA/configuration-variables.sh ${debug} "${target_languages}" ${trials} | while read line; do
+bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ./scripts/TRUBA/configuration-variables.sh ${debug} "${target_languages}" ${n_trials} | while read line; do
 
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id
