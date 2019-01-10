@@ -418,24 +418,6 @@ def cap_feature(s):
             return 1 + 12 + cap_characterization(s)
 
 
-def prepare_sentence(str_words, word_to_id, char_to_id, lower=False):
-    """
-    Prepare a sentence for evaluation.
-    """
-    def f(x): return x.lower() if lower else x
-    words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
-             for w in str_words]
-    chars = [[char_to_id[c] for c in w if c in char_to_id]
-             for w in str_words]
-    caps = [cap_feature(w) for w in str_words]
-    return {
-        'str_words': str_words,
-        'words': words,
-        'chars': chars,
-        'caps': caps
-    }
-
-
 def turkish_lower(s):
     return s.replace("IİŞÜĞÖÇ", "ıişüğöç")
 
@@ -734,7 +716,7 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
     return dictionary, word_to_id, id_to_word
 
 
-def _prepare_datasets(opts, parameters, for_training=True):
+def _prepare_datasets(opts, parameters, for_training=True, do_xnlp=False):
 
     opts_dict = opts.__dict__
 
@@ -748,7 +730,7 @@ def _prepare_datasets(opts, parameters, for_training=True):
     training_sets = {"ner": {}, "md": {}}
 
     # Load sentences
-    if for_training:
+    if for_training or do_xnlp:
         for label in list(training_sets.keys()):
             _train_sentences, max_sentence_lengths['train'], max_word_lengths['train'] = \
                 load_sentences(opts_dict[label+"_train_file"], zeros, parameters['file_format'])
@@ -825,7 +807,7 @@ def create_mappings(training_sets, parameters, file_format="conll",
            morpho_tag_to_id, id_to_morpho_tag
 
 
-def prepare_datasets(model, opts, parameters, for_training=True):
+def prepare_datasets(model, opts, parameters, for_training=True, do_xnlp=False):
     """
 
     :type model: MainTaggerModel
@@ -839,9 +821,9 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     ud_morpho_tag_separator = "|"
 
     training_sets, max_sentence_lengths, max_word_lengths = \
-        _prepare_datasets(opts, parameters, for_training=for_training)
+        _prepare_datasets(opts, parameters, for_training=for_training, do_xnlp=do_xnlp)
 
-    if not for_training:
+    if not for_training or do_xnlp:
         model.reload_mappings()
 
         char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, \
@@ -866,7 +848,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     stats_dict = {"ner": {}, "md": {}}
 
     # Index data
-    if for_training:
+    if for_training or do_xnlp:
         for label in ["ner", "md"]:
             for purpose in ["train", "dev"]:
                 if label in training_sets and purpose in training_sets[label]:
@@ -887,7 +869,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                 file_format=parameters['file_format'],
                 morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else ud_morpho_tag_separator))
 
-    if for_training:
+    if for_training or do_xnlp:
         for label in ["ner", "md"]:
             purposes = ["train", "dev", "test"]
             n_values = sum([1 for purpose in purposes if purpose in stats_dict[label]])
@@ -950,7 +932,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     print("Max. sentence lengths: %s" % max_sentence_lengths)
     print("Max. char lengths: %s" % max_word_lengths)
 
-    if for_training:
+    if for_training and not do_xnlp:
         triple_list = []
         for purpose in ["train", "dev", "test"]:
             triple_list += [[purpose, stats_dict["ner"][purpose], unique_words_dict["ner"][purpose]]] if purpose in stats_dict["ner"] else []

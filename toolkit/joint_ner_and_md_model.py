@@ -430,11 +430,17 @@ class MainTaggerModel(object):
 
             self.morpho_tag_embeddings = self.model.add_lookup_parameters((n_morpho_tags, mt_d),
                                                                     name="charembeddings")
+            # self.blank_morpho_tag_embedding = self.model.add_parameters(mt_d)
+            self.blank_morpho_tag_embedding = dynet.inputVector(list(np.zeros(mt_d)))
             self.morpho_tag_lstm_layer_for_morph_analysis_tags = \
                 create_bilstm_layer("morpho_tag_for_morph_analysis_tags",
                                     mt_d,
                                     2 * mt_d,
                                     bilstm=True)
+
+
+            # self.blank_morpho_tag_sequence_rep = \
+            #     self.morpho_tag_lstm_layer_for_morph_analysis_tags.get_representation([self.blank_morpho_tag_embedding])[0]
 
         if self.parameters['use_golden_morpho_analysis_in_word_representation']:
 
@@ -671,6 +677,7 @@ class MainTaggerModel(object):
 
     def _get_loss(self, sentence):
         loss_array = []
+        tag_scores = []
         context_representations_for_ner_loss, context_representations_for_md_loss = \
             self.get_context_representations(sentence)
         last_layer_context_representations, md_loss, _ = \
@@ -713,7 +720,7 @@ class MainTaggerModel(object):
 
         return None, None
 
-    def _valid_path_probs(self, tag_scores):
+    def _valid_path_probs(self, tag_scores, length):
         def log_sum_exp(scores):
             npval = scores.npvalue()
             argmax_score = np.argmax(npval)
@@ -722,18 +729,22 @@ class MainTaggerModel(object):
             return max_score_expr + dynet.log(
                 dynet.sum_dim(dynet.transpose(dynet.exp(scores - max_score_expr_broadcast)), [1]))
 
-        valid_paths = self._obtain_valid_paths(len(tag_scores))
-        print(valid_paths)
+        # print(len(tag_scores))
+        valid_paths = list(self._obtain_valid_paths(length))
+        # print(valid_paths)
         tag_to_id = {tag: id for id, tag in self.id_to_tag.items()}
         valid_paths = [[tag_to_id[t] for t in valid_path] for valid_path in valid_paths]
-        print(valid_paths)
+        # print(valid_paths)
 
         valid_path_scores = []
         for valid_path in valid_paths:
             node_scores = []
             for idx, n in enumerate(valid_path):
                 node_scores.append(tag_scores[idx][n].value())
-            path_score = log_sum_exp(dynet.inputVector(node_scores))
+            if len(node_scores) == 1:
+                path_score = dynet.scalarInput(node_scores[0])
+            else:
+                path_score = log_sum_exp(dynet.inputVector(node_scores))
             valid_path_scores.append(path_score)
         valid_path_probs = [s.value()/float(dynet.esum(valid_path_scores).value()) for s in valid_path_scores]
         return valid_path_probs
@@ -763,6 +774,25 @@ class MainTaggerModel(object):
                     if l == sequence_length:
                         # yield ["tag2"] + [l, sequence_length]
                         yield [(x % entity_type) for x in valid_path]
+
+    def probs_for_a_specific_entity(self, sentence, entity_indices):
+
+        dynet.renew_cg()
+        self.blank_morpho_tag_embedding = dynet.inputVector(list(np.zeros(self.parameters['mt_d'])))
+        tag_scores, decoded_tags = self._predict_for_xnlp(sentence)
+
+        valid_paths = list(self._obtain_valid_paths(entity_indices[-1]-entity_indices[0]))
+        # print(valid_paths)
+        # print(entity_indices)
+
+        valid_path_probs = self._valid_path_probs(tag_scores[entity_indices[0]:entity_indices[-1]],
+                                                  entity_indices[-1]-entity_indices[0])
+
+        if len(valid_path_probs) == 0:
+            print(sentence)
+
+        return sorted([("|".join(valid_path), prob) for valid_path, prob in zip(valid_paths, valid_path_probs)],
+                      key=lambda x: x[0])
 
     def calculate_tag_scores(self, context_representations):
 
@@ -852,8 +882,10 @@ class MainTaggerModel(object):
 
         try:
             morpho_tag_sequence_representations = \
-                [[self.morpho_tag_lstm_layer_for_morph_analysis_tags.get_representation([self.morpho_tag_embeddings[morpho_tag_id]
+                [[(self.morpho_tag_lstm_layer_for_morph_analysis_tags.get_representation([self.morpho_tag_embeddings[morpho_tag_id]
                                                               for morpho_tag_id in morpho_tag_sequence])[0]
+                   if len(morpho_tag_sequence) > 0 else
+                   (self.morpho_tag_lstm_layer_for_morph_analysis_tags.get_representation([self.blank_morpho_tag_embedding])[0]))
                 for morpho_tag_sequence in morpho_tag_sequences_for_word]
                 for morpho_tag_sequences_for_word in sentence['morpho_analyzes_tags']]
         except IndexError as e:

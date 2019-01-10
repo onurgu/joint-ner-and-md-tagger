@@ -6,3 +6,6 @@ pymongo==3.*
 git+https://github.com/onurgu/sacred@onurgu_branch
 pandas
 dynet==2.0.3
+scipy
+scikit-learn>=0.18
+scikit-image>=0.12

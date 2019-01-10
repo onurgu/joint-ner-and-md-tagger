@@ -1,3 +1,4 @@
+import dynet
 import numpy as np
 
 
@@ -81,5 +82,69 @@ if __name__ == "__main__":
             "model-epoch-00000030/"
         )
 
-    import IPython
-    IPython.embed()
+    from lib.lime.lime.lime_text import LimeConllSentenceExplainer, ConllSentenceDomainMapper, IndexedConllSentence
+
+    explainer = LimeConllSentenceExplainer(verbose=True)
+
+    unique_morpho_tag_types = set(model.id_to_morpho_tag.values())
+
+    morpho_tag_to_id = {k: i for i, k in model.id_to_morpho_tag.items()}
+
+    with open("explanations-for-ner-train-01.txt", "w") as out_f:
+
+        for sample_idx, sample in enumerate(data_dict['ner']['train']):
+            indexed_conll_sentence = IndexedConllSentence(sample)
+            domain_mapper = ConllSentenceDomainMapper(indexed_conll_sentence)
+            from utils.evaluation import extract_multi_token_entities
+            for entity_start, entity_end, entity_type in extract_multi_token_entities([model.id_to_tag[i] for i in sample['tag_ids']]):
+                entity_positions = (entity_start, entity_end)
+                entity_tags = [model.id_to_tag[i] for i in
+                               sample['tag_ids'][entity_positions[0]:entity_positions[-1]]]
+
+                morpho_tag_types_found_in_the_sample_as_ids = set().union(*[set().union(*[set(morpho_tag_sequence)
+                                                                                          for morpho_tag_sequence in
+                                                                                          morpho_tag_sequences])
+                                                                            for morpho_tag_sequences in
+                                                                            sample['morpho_analyzes_tags']])
+
+                morpho_tag_types_found_in_the_sample = [model.id_to_morpho_tag[i] for i in
+                                                        sorted(list(morpho_tag_types_found_in_the_sample_as_ids))]
+
+                class_names = list(model._obtain_valid_paths(entity_end-entity_start))
+                class_names = [x[1] for x in
+                               sorted([(" ".join(class_name), class_name) for class_name in class_names], key=lambda x: x[0])]
+                target_entity_tag_label_id = class_names.index(entity_tags)
+
+                dynet.renew_cg()
+                exp = explainer.explain_instance(sample,
+                                                 entity_positions,
+                                                 class_names,
+                                                 model.probs_for_a_specific_entity,
+                                                 labels=range(len(class_names)),
+                                                 num_samples=100,
+                                                 num_features=len(morpho_tag_types_found_in_the_sample_as_ids),
+                                                 strategy="NER_TAG_TYPE_REMOVAL",
+                                                 strategy_params_dict={
+                                                     "morpho_tag_types": sorted(
+                                                         list(morpho_tag_types_found_in_the_sample_as_ids)),
+                                                     "n_unique_morpho_tag_types": len(unique_morpho_tag_types)}
+                                                 )
+
+                # print(domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
+                #                                                  morpho_tag_types_found_in_the_sample))
+                # print(" ".join(
+                #     [x[0] for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
+                #                                                               morpho_tag_types_found_in_the_sample)][:10]))
+                # sorted_by_feature_name = sorted(
+                #     domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
+                #                                                morpho_tag_types_found_in_the_sample),
+                #     key=lambda x: x[0])
+                # print(sorted_by_feature_name)
+
+                print("\t".join([str(sample_idx), entity_type, " ".join([str(x) for x in [entity_start, entity_end]])] +
+                    [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
+                                                                              morpho_tag_types_found_in_the_sample)]))
+                out_f.write("\t".join([str(sample_idx), entity_type, " ".join([str(x) for x in [entity_start, entity_end]])] +
+                    [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
+                                                                              morpho_tag_types_found_in_the_sample)]) + "\n")
+                out_f.flush()

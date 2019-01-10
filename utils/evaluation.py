@@ -221,6 +221,8 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
         if type(opts.__dict__[arg_name]) == str:
             opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
                                                                   "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/")
+            if "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
+                opts.__dict__[arg_name] += ".short"
 
     print(opts)
     # Prepare the data
@@ -228,10 +230,16 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
     # id_to_tag, tag_scheme, test_data, \
     # train_data, train_stats, word_to_id, \
     # yuret_test_data, yuret_train_data
-    data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag = prepare_datasets(model,
-                                                     opts,
-                                                     parameters,
-                                                     for_training=True)
+    data_dict, \
+    id_to_tag, \
+    word_to_id, \
+    stats_dict, \
+    id_to_char, \
+    id_to_morpho_tag = prepare_datasets(model,
+                                        opts,
+                                        parameters,
+                                        for_training=False,
+                                        do_xnlp=True)
 
     return model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag, opts, parameters
 
@@ -275,7 +283,7 @@ def extract_multi_token_entities(tag_sequence):
     for idx, tag in enumerate(tag_sequence):
         if is_parsing_an_entity:
             if tag.startswith("I-"):
-                if prev_tag != "B-":
+                if prev_tag != "I-" and prev_tag != "B-":
                     raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
                 if prev_type != tag.replace("I-", ""):
                     raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
