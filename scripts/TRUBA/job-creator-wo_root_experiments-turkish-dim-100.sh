@@ -24,7 +24,7 @@ max_jobs_to_submit=1000
 
 #echo $jobs_line_by_line | while read line; do
 
-bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ${configuration_variables_script_path} ${debug} "${target_languages}" ${n_trials} | while read line; do
+bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-languages-TRUBA-turkish.sh ${experiment_name} ${dim} ${configuration_variables_script_path} ${debug} "${target_languages}" ${n_trials} | while read line; do
 
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id
