@@ -207,7 +207,7 @@ def eval_with_specific_model(model,
     return f_scores, disambiguation_accuracies, datasets_with_predicted_labels
 
 
-def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
+def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path, modify_paths_in_opts=True):
 
     model, opts, parameters = initialize_model_with_pretrained_parameters(model_dir_path,
                                                                           model_epoch_dir_path,
@@ -217,12 +217,13 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
     print(opts)
     print(parameters)
 
-    for arg_name in opts.__dict__.keys():
-        if type(opts.__dict__[arg_name]) == str:
-            opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
-                                                                  "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/")
-            if "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
-                opts.__dict__[arg_name] += ".short"
+    if modify_paths_in_opts:
+        for arg_name in opts.__dict__.keys():
+            if type(opts.__dict__[arg_name]) == str:
+                opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
+                                                                      "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/")
+                # if "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
+                #     opts.__dict__[arg_name] += ".short"
 
     print(opts)
     # Prepare the data
@@ -443,19 +444,19 @@ def evaluate(sys_argv):
     )
 
 
-def xnlp_experiments(sys_argv):
-
-    from utils import read_args
-
-    opts = read_args(args_as_a_list=sys_argv[1:], for_xnlp=True)
-
-    from utils.train import models_path
-
-    model, data_dict, id_to_tag, word_to_id, stats_dict = do_xnlp(
-        models_dir_path=models_path,
-        model_dir_path=opts.model_path,
-        model_epoch_dir_path=opts.model_epoch_path
-    )
+# def xnlp_experiments(sys_argv):
+#
+#     from utils import read_args
+#
+#     opts = read_args(args_as_a_list=sys_argv[1:], for_xnlp=True)
+#
+#     from utils.train import models_path
+#
+#     model, data_dict, id_to_tag, word_to_id, stats_dict = do_xnlp(
+#         models_dir_path=models_path,
+#         model_dir_path=opts.model_path,
+#         model_epoch_dir_path=opts.model_epoch_path
+#     )
 
 
 def predict_from_stdin(sys_argv):

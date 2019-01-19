@@ -72,15 +72,74 @@ def dev_obtain_valid_paths(self, sequence_length):
                     # yield ["tag2"] + [l, sequence_length]
                     yield [(x % entity_type) for x in valid_path]
 
+
+import datetime as dt
+import linecache
+import os
+from resource import getrusage, RUSAGE_SELF
+import tracemalloc
+
+def display_top(snapshot, key_type='lineno', limit=3):
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    top_stats = snapshot.statistics(key_type)
+
+    print("Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        # replace "/path/to/module/file.py" with "module/file.py"
+        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+        print("#%s: %s:%s: %.1f KiB"
+              % (index, filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            print('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+        print("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
+
+
+
 if __name__ == "__main__":
+
+
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--model_label", required=True)
+    parser.add_argument("--on_truba", default=False)
+
+    args = parser.parse_args()
+
+    models = {
+        "finnish_model_10_size": ("./xnlp/data/models",
+                                 "model-00002218/",
+                                 "model-epoch-00000030/"),
+        "finnish_model_100_size": ("./models",
+                                 "model-00002715/",
+                                 "model-epoch-00000047/"),
+        "turkish_model_100_size": ("./models",
+                                   "model-00002714/",
+                                   "model-epoch-00000026/"),
+    }
+
     from utils.evaluation import do_xnlp
 
     model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag, opts, parameters = \
         do_xnlp(
-            "./xnlp/data/models",
-            "model-00002218/",
-            "model-epoch-00000030/"
+            *models[args.model_label],
+            modify_paths_in_opts=False if args.on_truba else True
         )
+
+    # tracemalloc.start()
 
     from lib.lime.lime.lime_text import LimeConllSentenceExplainer, ConllSentenceDomainMapper, IndexedConllSentence
 
@@ -90,14 +149,19 @@ if __name__ == "__main__":
 
     morpho_tag_to_id = {k: i for i, k in model.id_to_morpho_tag.items()}
 
-    with open("explanations-for-ner-train-01.txt", "w") as out_f:
+    with open("explanations-for-ner-train-%s.txt" % args.model_label, "w") as out_f:
 
         for sample_idx, sample in enumerate(data_dict['ner']['train']):
+            max_rss = getrusage(RUSAGE_SELF).ru_maxrss
+            # snapshot = tracemalloc.take_snapshot()
+            print(dt.datetime.now(), 'max RSS', max_rss)
+            # display_top(snapshot)
             indexed_conll_sentence = IndexedConllSentence(sample)
             domain_mapper = ConllSentenceDomainMapper(indexed_conll_sentence)
             from utils.evaluation import extract_multi_token_entities
             for entity_start, entity_end, entity_type in extract_multi_token_entities([model.id_to_tag[i] for i in sample['tag_ids']]):
                 entity_positions = (entity_start, entity_end)
+                # extract the golden labels for the sequence
                 entity_tags = [model.id_to_tag[i] for i in
                                sample['tag_ids'][entity_positions[0]:entity_positions[-1]]]
 
@@ -110,24 +174,26 @@ if __name__ == "__main__":
                 morpho_tag_types_found_in_the_sample = [model.id_to_morpho_tag[i] for i in
                                                         sorted(list(morpho_tag_types_found_in_the_sample_as_ids))]
 
-                class_names = list(model._obtain_valid_paths(entity_end-entity_start))
+                class_names = model.obtain_valid_paths(entity_end-entity_start)
                 class_names = [x[1] for x in
                                sorted([(" ".join(class_name), class_name) for class_name in class_names], key=lambda x: x[0])]
-                target_entity_tag_label_id = class_names.index(entity_tags)
+                target_entity_tag_sequence_label_id = class_names.index(entity_tags)
 
                 dynet.renew_cg()
                 exp = explainer.explain_instance(sample,
                                                  entity_positions,
                                                  class_names,
                                                  model.probs_for_a_specific_entity,
-                                                 labels=range(len(class_names)),
+                                                 labels=(target_entity_tag_sequence_label_id,),
                                                  num_samples=100,
                                                  num_features=len(morpho_tag_types_found_in_the_sample_as_ids),
                                                  strategy="NER_TAG_TYPE_REMOVAL",
                                                  strategy_params_dict={
-                                                     "morpho_tag_types": sorted(
-                                                         list(morpho_tag_types_found_in_the_sample_as_ids)),
-                                                     "n_unique_morpho_tag_types": len(unique_morpho_tag_types)}
+                                                         "morpho_tag_types": sorted(
+                                                             list(morpho_tag_types_found_in_the_sample_as_ids)),
+                                                         "n_unique_morpho_tag_types": len(unique_morpho_tag_types),
+                                                         "perturbate_only_entity_indices": True
+                                                        }
                                                  )
 
                 # print(domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
@@ -142,9 +208,9 @@ if __name__ == "__main__":
                 # print(sorted_by_feature_name)
 
                 print("\t".join([str(sample_idx), entity_type, " ".join([str(x) for x in [entity_start, entity_end]])] +
-                    [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
-                                                                              morpho_tag_types_found_in_the_sample)]))
+                    [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_sequence_label_id],
+                                                                                                     morpho_tag_types_found_in_the_sample)]))
                 out_f.write("\t".join([str(sample_idx), entity_type, " ".join([str(x) for x in [entity_start, entity_end]])] +
-                    [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
-                                                                              morpho_tag_types_found_in_the_sample)]) + "\n")
+                    [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_sequence_label_id],
+                                                                                                     morpho_tag_types_found_in_the_sample)]) + "\n")
                 out_f.flush()

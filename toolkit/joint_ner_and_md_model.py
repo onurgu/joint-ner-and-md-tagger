@@ -19,6 +19,15 @@ logger = logging.getLogger(__name__)
 from utils import get_name, create_a_model_subpath, add_a_model_path_to_the_model_paths_database
 
 
+def log_sum_exp(scores):
+    npval = scores.npvalue()
+    argmax_score = np.argmax(npval)
+    max_score_expr = dynet.pick(scores, argmax_score)
+    max_score_expr_broadcast = dynet.concatenate([max_score_expr] * (npval.shape[0]))
+    return max_score_expr + dynet.log(
+        dynet.sum_dim(dynet.transpose(dynet.exp(scores - max_score_expr_broadcast)), [1]))
+
+
 class MainTaggerModel(object):
     """
     Network architecture.
@@ -38,6 +47,8 @@ class MainTaggerModel(object):
         """
 
         self.entity_types = set()
+
+        self._valid_path_cache = dict()
 
         self.training = True
         self.n_bests = 0
@@ -321,7 +332,9 @@ class MainTaggerModel(object):
         n_tags = len(self.id_to_tag)
         n_morpho_tags = len(self.id_to_morpho_tag)
 
-        self.entity_types = set([t.replace("B-", "") for t in self.id_to_tag.values() if t.startswith("B-")])
+        # self.entity_types = set([t.replace("B-", "") for t in self.id_to_tag.values() if t.startswith("B-")])
+        self.entity_types = set([t.replace("B-", "").replace("S-", "") for t in self.id_to_tag.values() if
+                                (t.startswith("B-") or t.startswith("S-"))])
 
         # Number of capitalization features
         if cap_dim:
@@ -720,79 +733,95 @@ class MainTaggerModel(object):
 
         return None, None
 
-    def _valid_path_probs(self, tag_scores, length):
-        def log_sum_exp(scores):
-            npval = scores.npvalue()
-            argmax_score = np.argmax(npval)
-            max_score_expr = dynet.pick(scores, argmax_score)
-            max_score_expr_broadcast = dynet.concatenate([max_score_expr] * (npval.shape[0]))
-            return max_score_expr + dynet.log(
-                dynet.sum_dim(dynet.transpose(dynet.exp(scores - max_score_expr_broadcast)), [1]))
-
-        # print(len(tag_scores))
-        valid_paths = list(self._obtain_valid_paths(length))
-        # print(valid_paths)
-        tag_to_id = {tag: id for id, tag in self.id_to_tag.items()}
-        valid_paths = [[tag_to_id[t] for t in valid_path] for valid_path in valid_paths]
-        # print(valid_paths)
+    def _valid_path_probs(self, tag_scores, valid_paths_as_ids):
 
         valid_path_scores = []
-        for valid_path in valid_paths:
+        for valid_path_as_ids in valid_paths_as_ids:
             node_scores = []
-            for idx, n in enumerate(valid_path):
-                node_scores.append(tag_scores[idx][n].value())
+            for time_t, tag_id in enumerate(valid_path_as_ids):
+                node_scores.append(tag_scores[time_t][tag_id])
             if len(node_scores) == 1:
-                path_score = dynet.scalarInput(node_scores[0])
+                path_score = node_scores[0]
             else:
-                path_score = log_sum_exp(dynet.inputVector(node_scores))
+                node_scores = dynet.concatenate(node_scores)
+                path_score = log_sum_exp(node_scores)
             valid_path_scores.append(path_score)
-        valid_path_probs = [s.value()/float(dynet.esum(valid_path_scores).value()) for s in valid_path_scores]
+        sum_valid_path_scores = dynet.esum(valid_path_scores)
+        valid_path_probs = dynet.cdiv(dynet.concatenate(valid_path_scores), sum_valid_path_scores)
+        # valid_path_probs = [s.value()/float(dynet.esum(valid_path_scores).value()) for s in valid_path_scores]
         return valid_path_probs
+
+    def obtain_valid_paths(self, sequence_length):
+        if sequence_length in self._valid_path_cache:
+            return self._valid_path_cache[sequence_length]
+        else:
+            self._valid_path_cache[sequence_length] = list(self._obtain_valid_paths(sequence_length))
+            return self._valid_path_cache[sequence_length]
 
     def _obtain_valid_paths(self, sequence_length):
 
+        # if sequence_length == 0:
+        #     # yield []
+        #     pass  # do not yield
+        # elif sequence_length == 1:
+        #     for entity_type in self.entity_types:
+        #         yield ["S-%s" % entity_type]
+        # else:
+        #     for entity_type in self.entity_types:
+        #         for right_valid_path in self._obtain_valid_paths(sequence_length - 1):
+        #             yield ["S-%s" % entity_type] + right_valid_path
+        #     for l in range(2, sequence_length + 1):
+        #         valid_path = [""] * l
+        #         valid_path[0] = "B-%s"
+        #         for i in range(1, l):
+        #             valid_path[i] = "I-%s"
+        #         valid_path[-1] = "E-%s"
+        #         for entity_type in self.entity_types:
+        #             for right_valid_path in self._obtain_valid_paths(sequence_length - l):
+        #                 # yield ["tag1"] + right_valid_path
+        #                 yield [(x % entity_type) for x in valid_path] + right_valid_path
+        #             if l == sequence_length:
+        #                 # yield ["tag2"] + [l, sequence_length]
+        #                 yield [(x % entity_type) for x in valid_path]
+
+        ret = []
         if sequence_length == 0:
-            # yield []
-            pass  # do not yield
+            ret = []
         elif sequence_length == 1:
+            ret = ["O"]
             for entity_type in self.entity_types:
-                yield ["S-%s" % entity_type]
+                ret.append(["S-%s" % entity_type])
         else:
+            ret = ["O" for _ in range(sequence_length)]
             for entity_type in self.entity_types:
-                for right_valid_path in self._obtain_valid_paths(sequence_length - 1):
-                    yield ["S-%s" % entity_type] + right_valid_path
-            for l in range(2, sequence_length + 1):
-                valid_path = [""] * l
-                valid_path[0] = "B-%s"
-                for i in range(1, l):
-                    valid_path[i] = "I-%s"
-                valid_path[-1] = "E-%s"
-                for entity_type in self.entity_types:
-                    for right_valid_path in self._obtain_valid_paths(sequence_length - l):
-                        # yield ["tag1"] + right_valid_path
-                        yield [(x % entity_type) for x in valid_path] + right_valid_path
-                    if l == sequence_length:
-                        # yield ["tag2"] + [l, sequence_length]
-                        yield [(x % entity_type) for x in valid_path]
+                if entity_type != "OUTSIDE":
+                    sub_ret = ["B-%s" % entity_type]
+                    for _ in range(sequence_length-2):
+                        sub_ret.append("I-%s" % entity_type)
+                    sub_ret.append("E-%s" % entity_type)
+                    ret.append(sub_ret)
+
+        return ret
 
     def probs_for_a_specific_entity(self, sentence, entity_indices):
 
         dynet.renew_cg()
+        # added this here because of a 'stale expression' error
         self.blank_morpho_tag_embedding = dynet.inputVector(list(np.zeros(self.parameters['mt_d'])))
         tag_scores, decoded_tags = self._predict_for_xnlp(sentence)
 
-        valid_paths = list(self._obtain_valid_paths(entity_indices[-1]-entity_indices[0]))
-        # print(valid_paths)
-        # print(entity_indices)
+        valid_paths = self.obtain_valid_paths(entity_indices[-1]-entity_indices[0])
+        tag_to_id = {tag: id for id, tag in self.id_to_tag.items()}
+        valid_paths_as_ids = [[tag_to_id[t] for t in valid_path] for valid_path in valid_paths]
 
         valid_path_probs = self._valid_path_probs(tag_scores[entity_indices[0]:entity_indices[-1]],
-                                                  entity_indices[-1]-entity_indices[0])
+                                                  valid_paths_as_ids)
 
+        valid_path_probs = valid_path_probs.value()
         if len(valid_path_probs) == 0:
             print(sentence)
 
-        return sorted([("|".join(valid_path), prob) for valid_path, prob in zip(valid_paths, valid_path_probs)],
-                      key=lambda x: x[0])
+        return [("NA", prob) for prob in valid_path_probs]
 
     def calculate_tag_scores(self, context_representations):
 

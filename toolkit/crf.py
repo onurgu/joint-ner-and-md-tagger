@@ -83,7 +83,6 @@ class CRF():
         alpha = log_sum_exp(terminal_expr)
         return alpha
 
-
     def viterbi_decoding(self, observations):
         backpointers = []
         init_vvars = [-1e10] * (self.n_tags + 2)
