@@ -46,7 +46,7 @@ class MainTaggerModel(object):
         we store the models, or the location of a trained model.
         """
 
-        self.entity_types = set()
+        self.entity_types = []
 
         self._valid_path_cache = dict()
 
@@ -333,8 +333,8 @@ class MainTaggerModel(object):
         n_morpho_tags = len(self.id_to_morpho_tag)
 
         # self.entity_types = set([t.replace("B-", "") for t in self.id_to_tag.values() if t.startswith("B-")])
-        self.entity_types = set([t.replace("B-", "").replace("S-", "") for t in self.id_to_tag.values() if
-                                (t.startswith("B-") or t.startswith("S-"))])
+        self.entity_types = sorted(list(set([t.replace("B-", "").replace("S-", "") for t in self.id_to_tag.values() if
+                                (t.startswith("B-") or t.startswith("S-"))])))
 
         # Number of capitalization features
         if cap_dim:
