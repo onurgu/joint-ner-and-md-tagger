@@ -725,13 +725,9 @@ class MainTaggerModel(object):
         if self.parameters['active_models'] in [0, 2, 3]:  # 0: NER, 1: MD, 2: JOINT, 3: JOINT_MULTILAYER
             tag_scores = self.calculate_tag_scores(last_layer_context_representations)
 
-            observations = [dynet.concatenate([obs, dynet.inputVector([-1e10, -1e10])], d=0) for obs in
-                            tag_scores]
-            decoded_tags, _ = self.crf_module.viterbi_decoding(observations)
+            return tag_scores
 
-            return tag_scores, decoded_tags
-
-        return None, None
+        return None
 
     def _valid_path_probs(self, tag_scores, valid_paths_as_ids):
 
@@ -745,6 +741,7 @@ class MainTaggerModel(object):
             else:
                 node_scores = dynet.concatenate(node_scores)
                 path_score = log_sum_exp(node_scores)
+            path_score = dynet.exp(path_score)
             valid_path_scores.append(path_score)
         sum_valid_path_scores = dynet.esum(valid_path_scores)
         valid_path_probs = dynet.cdiv(dynet.concatenate(valid_path_scores), sum_valid_path_scores)
@@ -788,7 +785,7 @@ class MainTaggerModel(object):
         if sequence_length == 0:
             ret = []
         elif sequence_length == 1:
-            ret = ["O"]
+            ret = [["O"]]
             for entity_type in self.entity_types:
                 ret.append(["S-%s" % entity_type])
         else:
@@ -805,14 +802,14 @@ class MainTaggerModel(object):
 
     def probs_for_a_specific_entity(self, sentence, entity_indices):
 
-        dynet.renew_cg()
-        # added this here because of a 'stale expression' error
-        self.blank_morpho_tag_embedding = dynet.inputVector(list(np.zeros(self.parameters['mt_d'])))
-        tag_scores, decoded_tags = self._predict_for_xnlp(sentence)
-
         valid_paths = self.obtain_valid_paths(entity_indices[-1]-entity_indices[0])
         tag_to_id = {tag: id for id, tag in self.id_to_tag.items()}
         valid_paths_as_ids = [[tag_to_id[t] for t in valid_path] for valid_path in valid_paths]
+
+        dynet.renew_cg()
+        # added this here because of a 'stale expression' error
+        self.blank_morpho_tag_embedding = dynet.inputVector(list(np.zeros(self.parameters['mt_d'])))
+        tag_scores = self._predict_for_xnlp(sentence)
 
         valid_path_probs = self._valid_path_probs(tag_scores[entity_indices[0]:entity_indices[-1]],
                                                   valid_paths_as_ids)

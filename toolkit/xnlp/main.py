@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
     from lib.lime.lime.lime_text import LimeConllSentenceExplainer, ConllSentenceDomainMapper, IndexedConllSentence
 
-    explainer = LimeConllSentenceExplainer(verbose=True)
+    explainer = LimeConllSentenceExplainer(verbose=True, feature_selection="none")
 
     unique_morpho_tag_types = set(model.id_to_morpho_tag.values())
 
