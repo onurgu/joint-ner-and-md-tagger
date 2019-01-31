@@ -149,7 +149,8 @@ if __name__ == "__main__":
 
     morpho_tag_to_id = {k: i for i, k in model.id_to_morpho_tag.items()}
 
-    with open("explanations-for-ner-train-%s.txt" % args.model_label, "w") as out_f:
+    with open("explanations-for-ner-train-%s.txt" % args.model_label, "w") as out_f, \
+            open("regression-data-for-ner-train-%s.txt" % args.model_label, "w") as regression_data_f:
 
         for sample_idx, sample in enumerate(data_dict['ner']['train']):
             max_rss = getrusage(RUSAGE_SELF).ru_maxrss
@@ -180,7 +181,7 @@ if __name__ == "__main__":
                 target_entity_tag_sequence_label_id = class_names.index(entity_tags)
 
                 dynet.renew_cg()
-                exp = explainer.explain_instance(sample,
+                exp, configurations, probs = explainer.explain_instance(sample,
                                                  entity_positions,
                                                  class_names,
                                                  model.probs_for_a_specific_entity,
@@ -196,17 +197,6 @@ if __name__ == "__main__":
                                                         }
                                                  )
 
-                # print(domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
-                #                                                  morpho_tag_types_found_in_the_sample))
-                # print(" ".join(
-                #     [x[0] for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
-                #                                                               morpho_tag_types_found_in_the_sample)][:10]))
-                # sorted_by_feature_name = sorted(
-                #     domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_label_id],
-                #                                                morpho_tag_types_found_in_the_sample),
-                #     key=lambda x: x[0])
-                # print(sorted_by_feature_name)
-
                 print("\t".join([str(sample_idx), entity_type, " ".join([str(x) for x in [entity_start, entity_end]])] +
                     [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_sequence_label_id],
                                                                                                      morpho_tag_types_found_in_the_sample)]))
@@ -214,3 +204,12 @@ if __name__ == "__main__":
                     [" ".join([x[0], str(x[1])]) for x in domain_mapper.translate_feature_ids_in_exp(exp.local_exp[target_entity_tag_sequence_label_id],
                                                                                                      morpho_tag_types_found_in_the_sample)]) + "\n")
                 out_f.flush()
+
+                one_liners = []
+                for tmp in [configurations, probs]:
+                    out_string = ""
+                    out_string += "%d %d " % tmp.shape
+                    out_string += " ".join(["%e" % x for x in list(tmp.ravel())])
+                    one_liners.append(out_string)
+
+                regression_data_f.write("\t".join(one_liners) + "\n")
