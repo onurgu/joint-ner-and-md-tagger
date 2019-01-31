@@ -169,7 +169,7 @@ if __name__ == "__main__":
                                                                                           for morpho_tag_sequence in
                                                                                           morpho_tag_sequences])
                                                                             for morpho_tag_sequences in
-                                                                            sample['morpho_analyzes_tags']])
+                                                                            sample['morpho_analyzes_tags'][entity_positions[0]:entity_positions[-1]]])
 
                 morpho_tag_types_found_in_the_sample = [model.id_to_morpho_tag[i] for i in
                                                         sorted(list(morpho_tag_types_found_in_the_sample_as_ids))]
