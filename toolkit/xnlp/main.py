@@ -212,4 +212,7 @@ if __name__ == "__main__":
                     out_string += " ".join(["%e" % x for x in list(tmp.ravel())])
                     one_liners.append(out_string)
 
-                regression_data_f.write("\t".join(one_liners) + "\n")
+                regression_data_f.write("\t".join(one_liners
+                                                  + [str(target_entity_tag_sequence_label_id)]
+                                                  + [" ".join([str(len(model.id_to_morpho_tag))] + [str(x) for x in sorted(list(morpho_tag_types_found_in_the_sample_as_ids))])])
+                                        + "\n")

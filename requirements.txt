@@ -1,4 +1,4 @@
-IPython
+jupyter
 numpy==1.*
 virtualenvwrapper
 pymongo==3.*
