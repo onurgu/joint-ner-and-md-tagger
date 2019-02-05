@@ -150,7 +150,10 @@ if __name__ == "__main__":
     morpho_tag_to_id = {k: i for i, k in model.id_to_morpho_tag.items()}
 
     with open("explanations-for-ner-train-%s.txt" % args.model_label, "w") as out_f, \
-            open("regression-data-for-ner-train-%s.txt" % args.model_label, "w") as regression_data_f:
+        open("regression-data-for-ner-train-%s.txt" % args.model_label, "w") as regression_data_f, \
+        open("id_to_morpho_tag-for-ner-train-%s.txt" % args.model_label, "w") as out_id_to_morpho_tag_f:
+
+        out_id_to_morpho_tag_f.write("\t".join([" ".join(t) for t in sorted(model.id_to_morpho_tag.items(), key=lambda x: x[0])])+"\n")
 
         for sample_idx, sample in enumerate(data_dict['ner']['train']):
             max_rss = getrusage(RUSAGE_SELF).ru_maxrss
