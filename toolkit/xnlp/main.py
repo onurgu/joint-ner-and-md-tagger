@@ -151,7 +151,7 @@ if __name__ == "__main__":
 
     with open("id_to_morpho_tag-for-ner-train-%s.txt" % args.model_label, "w") as out_id_to_morpho_tag_f:
         out_id_to_morpho_tag_f.write(
-            "\t".join([" ".join(t) for t in sorted(model.id_to_morpho_tag.items(), key=lambda x: x[0])]) + "\n")
+            "\t".join([" ".join(map(str, t)) for t in sorted(model.id_to_morpho_tag.items(), key=lambda x: x[0])]) + "\n")
 
     with open("explanations-for-ner-train-%s.txt" % args.model_label, "w") as out_f, \
         open("regression-data-for-ner-train-%s.txt" % args.model_label, "w") as regression_data_f:
