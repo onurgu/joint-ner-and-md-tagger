@@ -9,7 +9,7 @@ script_path = os.path.join(os.getcwd(), os.path.dirname(sys.argv[0]))
 
 try:
     import configparser
-    cp = ConfigParser
+    cp = configparser.ConfigParser
 except ImportError as e:
     print(e)
     import configparser
