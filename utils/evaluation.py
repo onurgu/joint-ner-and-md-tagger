@@ -18,6 +18,7 @@ import os
 
 import dynet
 
+from evaluation.conlleval import evaluate as conll_evaluate, report as conll_report, metrics
 from toolkit.joint_ner_and_md_model import MainTaggerModel
 from utils import eval_script, iobes_iob, eval_logs_dir
 from utils.loader import prepare_datasets, extract_mapping_dictionaries_from_model
@@ -69,6 +70,7 @@ def eval_with_specific_model(model,
                                         for purpose in list(datasets_to_be_predicted[label].keys())}
                                 for label in list(datasets_to_be_predicted.keys())}
 
+    test_metrics = None
     # for dataset_label, dataset_as_list in datasets_to_be_predicted:
     for label in list(datasets_to_be_predicted.keys()):
         for purpose in list(datasets_to_be_predicted[label].keys()):
@@ -158,11 +160,13 @@ def eval_with_specific_model(model,
                 # sys.exit(0)
                 # with open(output_path, "r", encoding="utf-8") as output_path_f:
                 # try:
-                from evaluation.conlleval import evaluate as conll_evaluate, report as conll_report
+
                 with open(output_path, "r") as output_path_f, open(scores_path, "w") as scores_path_f:
                     print("Evaluating the %s dataset with conlleval script's Python implementation" % (label + "_" + purpose))
                     counts = conll_evaluate(output_path_f)
                     eval_script_output = conll_report(counts, out=scores_path_f)
+                    if label == "ner" and purpose == "test":
+                        test_metrics = metrics(counts)
                 # print("Evaluating the %s dataset with conlleval script runner" % (label + "_" + purpose))
                 # command_string = "%s %s %s" % (eval_script, output_path, scores_path)
                 # print(command_string)
@@ -204,7 +208,7 @@ def eval_with_specific_model(model,
                 disambiguation_accuracies[label][purpose] = \
                     total_correct_disambs[label][purpose] / float(total_disamb_targets[label][purpose])
 
-    return f_scores, disambiguation_accuracies, datasets_with_predicted_labels
+    return f_scores, disambiguation_accuracies, datasets_with_predicted_labels, test_metrics
 
 
 def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path, modify_paths_in_opts=True):
@@ -222,8 +226,8 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path, modify_paths_
             if type(opts.__dict__[arg_name]) == str:
                 opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
                                                                       "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/")
-                # if "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
-                #     opts.__dict__[arg_name] += ".short"
+                if "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
+                    opts.__dict__[arg_name] += ".short"
 
     print(opts)
     # Prepare the data
@@ -407,7 +411,7 @@ def predict_tags_given_model_and_input(datasets_to_be_tested,
                                        model,
                                        return_result=False):
 
-    f_scores, morph_accuracies, labeled_sentences = eval_with_specific_model(model,
+    f_scores, morph_accuracies, labeled_sentences, _ = eval_with_specific_model(model,
                                                                              -1,
                                                                              datasets_to_be_tested,
                                                                              return_result)

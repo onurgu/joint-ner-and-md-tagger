@@ -17,6 +17,8 @@ extra_arguments_to_be_added_to_every_job_line="$extra_arguments_to_be_added_to_e
 
 configuration_variables_script_path=${10:-./scripts/TRUBA/configuration-variables.sh}
 
+alt_dataset_group=${11:-'none'}
+
 sub_job_id=0
 max_jobs_to_submit=1000
 
@@ -24,7 +26,7 @@ max_jobs_to_submit=1000
 
 #echo $jobs_line_by_line | while read line; do
 
-bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ${configuration_variables_script_path} ${debug} "${target_languages}" ${n_trials} | while read line; do
+bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-languages-TRUBA.sh ${experiment_name} ${dim} ${configuration_variables_script_path} ${debug} "${target_languages}" ${n_trials} ${alt_dataset_group} | while read line; do
 
 	sub_job_id=$((sub_job_id + 1))
 	echo $sub_job_id

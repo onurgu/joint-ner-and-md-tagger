@@ -716,7 +716,7 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
     return dictionary, word_to_id, id_to_word
 
 
-def _prepare_datasets(opts, parameters, for_training=True, do_xnlp=False):
+def _prepare_datasets(opts, parameters, for_training=True, do_xnlp=False, alt_dataset_group="none"):
 
     opts_dict = opts.__dict__
 
@@ -729,19 +729,24 @@ def _prepare_datasets(opts, parameters, for_training=True, do_xnlp=False):
 
     training_sets = {"ner": {}, "md": {}}
 
+    if alt_dataset_group == "none":
+        alt_dataset_group = ""
+    else:
+        alt_dataset_group = "." + alt_dataset_group
+
     # Load sentences
     if for_training or do_xnlp:
         for label in list(training_sets.keys()):
             _train_sentences, max_sentence_lengths['train'], max_word_lengths['train'] = \
-                load_sentences(opts_dict[label+"_train_file"], zeros, parameters['file_format'])
+                load_sentences(opts_dict[label+"_train_file"]+alt_dataset_group, zeros, parameters['file_format'])
             update_tag_scheme(_train_sentences, tag_scheme, file_format=parameters['file_format'])
             training_sets[label]['train'] = _train_sentences
 
     for label in list(training_sets.keys()):
         for purpose in ["dev", "test"]:
-            if os.path.exists(opts_dict[label+"_"+purpose+"_file"]):
+            if os.path.exists(opts_dict[label+"_"+purpose+"_file"]+alt_dataset_group):
                 _dev_sentences, max_sentence_lengths[purpose], max_word_lengths[purpose] = \
-                    load_sentences(opts_dict[label+"_"+purpose+"_file"], zeros, parameters['file_format'])
+                    load_sentences(opts_dict[label+"_"+purpose+"_file"]+alt_dataset_group, zeros, parameters['file_format'])
                 update_tag_scheme(_dev_sentences, tag_scheme, file_format=parameters['file_format'])
                 training_sets[label][purpose] = _dev_sentences
 
@@ -821,7 +826,10 @@ def prepare_datasets(model, opts, parameters, for_training=True, do_xnlp=False):
     ud_morpho_tag_separator = "|"
 
     training_sets, max_sentence_lengths, max_word_lengths = \
-        _prepare_datasets(opts, parameters, for_training=for_training, do_xnlp=do_xnlp)
+        _prepare_datasets(opts, parameters,
+                          for_training=for_training,
+                          do_xnlp=do_xnlp,
+                          alt_dataset_group=opts.alt_dataset_group)
 
     if not for_training or do_xnlp:
         model.reload_mappings()
