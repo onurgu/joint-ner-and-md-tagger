@@ -1,4 +1,5 @@
 
+from collections import defaultdict
 import codecs
 import json
 import os
@@ -79,6 +80,13 @@ for lang_name in lang_names:
 
     dataset_filepath_labels = "train_file dev_file test_file".split(" ")
     related_entity_type_and_top_or_bottom_labels = [(x[0], x[1].split(",")) for x in list(c_parser.items('general')) if "_morpho_tags_" in x[0]]
+    related_entity_type_and_top_and_bottom_labels = defaultdict(list)
+    for x in list(c_parser.items('general')):
+        if (x[0].endswith("_morpho_tags_top") or x[0].endswith("_morpho_tags_bottom")):
+            key = "_".join(x[0].split("_")[:-1] + ["TOPandBOTTOM"])
+            related_entity_type_and_top_and_bottom_labels[key] += x[1].split(",")
+
+    related_entity_type_and_top_or_bottom_labels += [(key, value) for key, value in related_entity_type_and_top_and_bottom_labels.items()]
 
     for section in sections:
         for dataset_filepath_label in dataset_filepath_labels:

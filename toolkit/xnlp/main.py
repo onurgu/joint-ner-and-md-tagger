@@ -1,4 +1,5 @@
 import dynet
+from itertools import chain
 import numpy as np
 import pandas as pd
 
@@ -345,8 +346,13 @@ def generate_tables_in_latex(language_name, zero_centered_Ps, id_to_morpho_tag, 
         mean_for_entity_type = sorted(
             [(id_to_morpho_tag[idx], el) for idx, el in enumerate(explanations_nparray_dict[entity_type].mean(axis=0))],
             key=lambda x: x[1], reverse=True)
+        zero_means_for_entity_type = [x for x in mean_for_entity_type if x[1] == 0]
+        list_to_be_added = [mean_for_entity_type[:10], mean_for_entity_type[-10:],
+                            zero_means_for_entity_type]
+        list_to_be_added += list(chain.from_iterable(
+            [[mean_for_entity_type[:i], mean_for_entity_type[-i:]] for i in range(1, 10)]))
+        ret_dict[entity_type] = list_to_be_added
         limited_mean_for_entity_type = mean_for_entity_type[:10] + mean_for_entity_type[-10:]
-        ret_dict[entity_type] = (mean_for_entity_type[:10], mean_for_entity_type[-10:])
         df_results = pd.DataFrame([x for x in limited_mean_for_entity_type],
                                   index=[x[0] for x in limited_mean_for_entity_type])
         print("\\begin{table}")
@@ -388,7 +394,9 @@ if __name__ == "__main__":
                                                                    zero_centered_Ps,
                                                                    id_to_morpho_tag,
                                                                    explanations_nparray_dict)
-
+        from itertools import chain
         for entity_type, top_and_bottom_morpho_tags in top_and_bottom_morpho_tags_dict.items():
-            for idx, label in enumerate(["top", "bottom"]):
+            for idx, label in enumerate(["top", "bottom", "zero"] +
+                                        list(chain.from_iterable(zip(["top%02d" % i for i in range(1, 10)],
+                                                                     ["bottom%02d" % i for i in range(1, 10)])))):
                 print("%s_morpho_tags_%s=%s" % (entity_type, label, ",".join([str(x[0]) for x in top_and_bottom_morpho_tags[idx]])))
