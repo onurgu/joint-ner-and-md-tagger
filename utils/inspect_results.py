@@ -246,9 +246,7 @@ def report(campaign_name="TRUBA-20181010-over-all-languages-03-dim-10-morpho_tag
                                                      "shortcut_connections",
                                                      "lang_name"]).NER_best_test.mean())
 
-        df_lang_name.to_csv(f"./reports/report-{campaign_name}-{lang_name}.csv")
-
-
+        df_lang_name.to_csv("./reports/report-%s-%s.csv" % (campaign_name, lang_name))
 
 
 if __name__ == "__main__":

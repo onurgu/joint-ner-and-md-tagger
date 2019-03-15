@@ -187,11 +187,9 @@ def train(sys_argv):
         print("Training took {} seconds for this epoch".format(time.time()-start_time))
 
         if epoch_no-last_epoch_with_best_scores == 0 or epoch_no < last_epoch_with_best_scores + 10:
-            print(f"Continue to train as the last peoch with best scores was only "
-                  f"{epoch_no-last_epoch_with_best_scores} epochs before")
+            print("Continue to train as the last peoch with best scores was only %d epochs before" % (epoch_no-last_epoch_with_best_scores))
         else:
-            print(f"Stop training as the last epoch with best scores was {epoch_no-last_epoch_with_best_scores} epochs "
-                  f"before")
+            print("Stop training as the last epoch with best scores was %d epochs before" % (epoch_no-last_epoch_with_best_scores))
             break
 
 
