@@ -403,10 +403,11 @@ class MainTaggerModel(object):
                           c_found, c_lower, c_zeros
                       ))
             word_representation_dim += word_dim
-            self.word_embeddings = self.model.add_lookup_parameters((n_words, word_dim),
-                                                                    init=dynet.NumpyInitializer(
-                                                                        new_weights),
-                                                                    name="wordembeddings")
+            self.word_embeddings = self.model.lookup_parameters_from_numpy(new_weights, name="wordembeddings")
+            # self.word_embeddings = self.model.add_lookup_parameters((n_words, word_dim),
+            #                                                         init=dynet.NumpyInitializer(
+            #                                                             new_weights),
+            #                                                         name="wordembeddings")
 
 
         def create_bilstm_layer(label, input_dim, lstm_dim, bilstm=True):
