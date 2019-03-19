@@ -38,7 +38,7 @@ bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-lan
 	job_id=`echo ${line} $extra_arguments_to_be_added_to_every_job_line | awk '{ match($0, /.* experiment_name=([^ ]+) /, arr); printf "%s", arr[1]; }'`
 
     idle_cpus=$(sinfo -O cpusstate -h | awk -F "/" '{print $2}')
-    while [[ idle_cpus -le 12 ]]; do
+    while [[ idle_cpus -le 24 ]]; do
         echo Unfortunately, the number of idle cpus ${n_current_jobs} is lower than 10. Waiting for 5 minutes to check again.
         sleep 300
         idle_cpus=$(sinfo -O cpusstate -h | awk -F "/" '{print $2}')
