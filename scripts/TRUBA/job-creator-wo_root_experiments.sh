@@ -21,6 +21,7 @@ alt_dataset_group=${11:-'none'}
 
 sub_job_id=0
 max_jobs_to_submit=1000
+ACCOUNT_ARGUMENT="-A ogungor"
 
 # jobs_line_by_line=`${rundir_path}/helper-script-to-run-the-experiment-set-TRUBA.sh ${experiment_name} ${dim}`
 
@@ -53,7 +54,7 @@ bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-lan
 	echo '#!/bin/bash' > ${rundir_path}/batch-script-${job_id}.sh
 	echo $line $extra_arguments_to_be_added_to_every_job_line >> ${rundir_path}/batch-script-${job_id}.sh
 
-	RES=$(sbatch -A ogungor -J ${job_id} -p ${partition_name} -c ${core_per_job} --time=${max_time} --mail-type=END --mail-user=onurgu@boun.edu.tr ${rundir_path}/batch-script-${job_id}.sh)
+	RES=$(sbatch ${ACCOUNT_ARGUMENT} -J ${job_id} -p ${partition_name} -c ${core_per_job} --time=${max_time} --mail-type=END --mail-user=onurgu@boun.edu.tr ${rundir_path}/batch-script-${job_id}.sh)
 	SLURM_JOB_ID=${RES##* }
 
 	echo SLURM_JOB_ID ${SLURM_JOB_ID} sleeping for 120 seconds to allow time to FileStorageObserver
