@@ -85,6 +85,11 @@ for lang_name in lang_names:
         if (x[0].endswith("_morpho_tags_top") or x[0].endswith("_morpho_tags_bottom")):
             key = "_".join(x[0].split("_")[:-1] + ["TOPandBOTTOM"])
             related_entity_type_and_top_and_bottom_labels[key] += x[1].split(",")
+        # for TOPandBOTTOM_01 03 and 05
+        for i in [1, 3, 5]:
+            if (x[0].endswith("_morpho_tags_top%02d" % i) or x[0].endswith("_morpho_tags_bottom%02d" % i)):
+                key = "_".join(x[0].split("_")[:-1] + ["TOPandBOTTOM%02d" % i])
+                related_entity_type_and_top_and_bottom_labels[key] += x[1].split(",")
 
     related_entity_type_and_top_or_bottom_labels += [(key, value) for key, value in related_entity_type_and_top_and_bottom_labels.items()]
 
