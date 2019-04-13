@@ -80,6 +80,7 @@ for lang_name in lang_names:
 
     dataset_filepath_labels = "train_file dev_file test_file".split(" ")
     related_entity_type_and_top_or_bottom_labels = [(x[0], x[1].split(",")) for x in list(c_parser.items('general')) if "_morpho_tags_" in x[0]]
+    related_entity_type_and_top_or_bottom_labels += [(x[0], x[1].split(",")) for x in list(c_parser.items('general')) if x[0].startswith("ZERO_GROUP_")]
     related_entity_type_and_top_and_bottom_labels = defaultdict(list)
     for x in list(c_parser.items('general')):
         if (x[0].endswith("_morpho_tags_top") or x[0].endswith("_morpho_tags_bottom")):
