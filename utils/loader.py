@@ -825,11 +825,16 @@ def prepare_datasets(model, opts, parameters, for_training=True, do_xnlp=False):
 
     ud_morpho_tag_separator = "|"
 
+    if "alt_dataset_group" in opts.__dict__:
+        alt_dataset_group = opts.alt_dataset_group
+    else:
+        alt_dataset_group = "none"
+
     training_sets, max_sentence_lengths, max_word_lengths = \
         _prepare_datasets(opts, parameters,
                           for_training=for_training,
                           do_xnlp=do_xnlp,
-                          alt_dataset_group=opts.alt_dataset_group)
+                          alt_dataset_group=alt_dataset_group)
 
     if not for_training or do_xnlp:
         model.reload_mappings()

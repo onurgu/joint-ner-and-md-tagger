@@ -346,6 +346,7 @@ def explain_using_raw_probs(args, data_dir):
 def generate_tables_in_latex(language_name, zero_centered_Ps, id_to_morpho_tag, explanations_nparray_dict):
     ret_dict = {}
     unfiltered_means = {}
+    near_zero_groups_table = defaultdict(dict)
     zero_groups_table = defaultdict(dict)
     for entity_type in zero_centered_Ps.keys():
         mean_for_entity_type = sorted(
@@ -370,14 +371,26 @@ def generate_tables_in_latex(language_name, zero_centered_Ps, id_to_morpho_tag, 
         print("\\end{table}")
         print("")
 
+        print(entity_type)
+        print(mean_for_entity_type)
+
         # use zero_means_for_entity_type to determine zero_groups
         for feature_name, _ in zero_means_for_entity_type:
             zero_groups_table[feature_name][entity_type] = 1
+        # use zero_means_for_entity_type to determine zero_groups
+        for feature_name, _ in near_zero_means_for_entity_type:
+            near_zero_groups_table[feature_name][entity_type] = 1
+
     zero_groups = defaultdict(list)
     for feature_name, active_entity_types in zero_groups_table.items():
         zero_groups["ZERO_GROUP_"+"_".join(sorted(active_entity_types.keys()))].append(feature_name)
     for zero_group_name, zero_group in zero_groups.items():
         ret_dict[zero_group_name] = ",".join(sorted(zero_groups[zero_group_name]))
+    near_zero_groups = defaultdict(list)
+    for feature_name, active_entity_types in near_zero_groups_table.items():
+        near_zero_groups["NEAR_ZERO_GROUP_" + "_".join(sorted(active_entity_types.keys()))].append(feature_name)
+    for zero_group_name, zero_group in near_zero_groups.items():
+        ret_dict[zero_group_name] = ",".join(sorted(near_zero_groups[zero_group_name]))
     return ret_dict, unfiltered_means
 
 
@@ -641,7 +654,7 @@ if __name__ == "__main__":
                                                                                      explanations_nparray_dict)
         from itertools import chain
         for entity_type, top_and_bottom_morpho_tags in top_and_bottom_morpho_tags_dict.items():
-            if entity_type.startswith("ZERO_GROUP_"):
+            if entity_type.startswith("ZERO_GROUP_") or entity_type.startswith("NEAR_ZERO_GROUP_"):
                 print("%s=%s" % (entity_type, top_and_bottom_morpho_tags))
             else:
                 for idx, label in enumerate(["top", "bottom", "zero", "near_zero"] +
@@ -649,6 +662,8 @@ if __name__ == "__main__":
                                                                          ["bottom%02d" % i for i in range(1, 10)])))):
                     print("%s_morpho_tags_%s=%s" % (entity_type, label, ",".join([str(x[0]) for x in top_and_bottom_morpho_tags[idx]])))
         print("")
+
+
 
         import matplotlib.pyplot as plt
         statistics = defaultdict(list)

@@ -45,7 +45,7 @@ bash ${rundir_path}/helper-script-to-run-the-wo_root-experiment-set-over-all-lan
     done
 
     n_current_jobs=$(squeue -u ogungor -o '%i' -h | wc -l)
-    while [[ n_current_jobs -ge 100 ]]; do
+    while [[ n_current_jobs -ge 6 ]]; do
         echo Unfortunately, the number of jobs waiting and running ${n_current_jobs} is equal to or greater than the limit of 100. Waiting for 5 minutes to check again.
         sleep 300
         n_current_jobs=$(squeue -u ogungor -o '%i' -h | wc -l)
