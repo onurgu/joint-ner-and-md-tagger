@@ -109,6 +109,67 @@ def display_top(snapshot, key_type='lineno', limit=3):
     print("Total allocated size: %.1f KiB" % (total / 1024))
 
 
+def generate_binary_classification_problems(args, data_dir):
+    models = {
+        "finnish_model_10_size": ("./xnlp/data/models",
+                                  "model-00002218/",
+                                  "model-epoch-00000030/"),
+        "finnish_model_100_size": ("./models",
+                                   "model-00002715/",
+                                   "model-epoch-00000047/"),
+        "turkish_model_100_size": ("./models",
+                                   "model-00002714/",
+                                   "model-epoch-00000026/"),
+    }
+
+    from utils.evaluation import do_xnlp
+
+    model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag, opts, parameters = \
+        do_xnlp(
+            *models[args.model_label],
+            modify_paths_in_opts=False if args.on_truba else True
+        )
+
+    morpho_tag_to_id = {morpho_tag: id for id, morpho_tag in id_to_morpho_tag.items()}
+
+    from utils.evaluation import extract_multi_token_entities
+
+    with open("binary-classification-problems-for-ner-train-%s.txt" % args.model_label, "w") as binary_classification_problems_f:
+        for sample_idx, sample in enumerate(data_dict['ner']['train']):
+            print(sample_idx)
+            for entity_start, entity_end, entity_type in extract_multi_token_entities(
+                    [model.id_to_tag[i] for i in sample['tag_ids']]):
+                entity_positions = (entity_start, entity_end)
+
+                entity_tags = [model.id_to_tag[i] for i in
+                               sample['tag_ids'][entity_positions[0]:entity_positions[-1]]]
+
+                golden_morph_analysis_indices = sample['golden_morph_analysis_indices'][entity_positions[0]:entity_positions[-1]]
+                morpho_analyzes_tags = sample['morpho_analyzes_tags'][entity_positions[0]:entity_positions[-1]]
+                try:
+                    golden_morpho_analyzes = [morpho_analysis_tags[golden_morph_analysis_index]
+                                              for morpho_analysis_tags, golden_morph_analysis_index in zip(morpho_analyzes_tags,
+                                                                                     golden_morph_analysis_indices)]
+
+                    _pre = [set().union(morpho_analysis_tags[golden_morph_analysis_index])
+                            for morpho_analysis_tags, golden_morph_analysis_index in zip(morpho_analyzes_tags,
+                                                                   golden_morph_analysis_indices)]
+                    unique_morpho_tags_in_the_correct_morph_analysis = set().union(*_pre)
+                except (IndexError, TypeError) as e:
+
+                    print(golden_morph_analysis_indices, e)
+                    print(entity_positions)
+                    print(morpho_analyzes_tags)
+                    print(sample)
+                    import sys
+                    sys.exit(1)
+
+                sample_line_tsv = "\t".join([entity_type] + [str(int(idx in unique_morpho_tags_in_the_correct_morph_analysis)) for idx in range(len(id_to_morpho_tag))])
+                binary_classification_problems_f.write(sample_line_tsv+"\n")
+
+
+
+
 def generate_raw_explanations(args, data_dir):
     models = {
         "finnish_model_10_size": ("./xnlp/data/models",
@@ -222,7 +283,7 @@ def generate_raw_explanations(args, data_dir):
     return lime_explanations, raw_explanations
 
 
-def explain_using_raw_probs(args, data_dir):
+def explain_using_raw_probs(model_label, data_dir):
 
     files = {"all": "../../explanations-for-ner-train-finnish-20190114-total.txt",
              "only_target_entities": "../../explanations-for-ner-train-finnish-20190115-total-only_target_entities.txt",
@@ -237,7 +298,7 @@ def explain_using_raw_probs(args, data_dir):
 
     lines = []
     raw_data_records = []
-    with open(os.path.join(data_dir, files[args.model_label]["raw_data"]), "r") as f:
+    with open(os.path.join(data_dir, files[model_label]["raw_data"]), "r") as f:
         lines = f.readlines()
         for line in lines:
             first_part, second_part, third_part, fourth_part = line.strip().split("\t")
@@ -257,7 +318,7 @@ def explain_using_raw_probs(args, data_dir):
 
     lines = []
     records = []
-    with open(os.path.join(data_dir, files[args.model_label]["explanations"]), "r") as f:
+    with open(os.path.join(data_dir, files[model_label]["explanations"]), "r") as f:
         lines = f.readlines()
         for line in lines:
             tokens = line.strip().split("\t")
@@ -307,7 +368,7 @@ def explain_using_raw_probs(args, data_dir):
         zero_centered_Ps[target_entity_type] = np.array(zero_centered_Ps[target_entity_type])
         indexed_Cs[target_entity_type] = np.array(indexed_Cs[target_entity_type])
 
-    with open(os.path.join(data_dir, files[args.model_label]["id_to_morpho_tag"]), "r") as id_to_morpho_tag_f:
+    with open(os.path.join(data_dir, files[model_label]["id_to_morpho_tag"]), "r") as id_to_morpho_tag_f:
         id_to_morpho_tag = {int(x.split(" ")[0]): x.split(" ")[1] for x in
                             id_to_morpho_tag_f.readline().strip().split("\t")}
 
@@ -416,6 +477,129 @@ def generate_tables_with_cumsum_in_latex(language_name, zero_centered_Ps, id_to_
                                                                                                                  entity_type,
                                                                                                                  entity_type.lower(),
                                                                                                                  language_name.lower()))
+        print("\\end{table}")
+        print("")
+
+
+def generate_table_morpho_tag_vs_entity_types(language_name, zero_centered_Ps, id_to_morpho_tag, explanations_nparray_dict,
+                                              normalize=True,
+                                              print_mean_values=True,
+                                              print_top_center_bottom=False):
+
+    morpho_tag_names = [id_to_morpho_tag[idx] for idx in range(len(id_to_morpho_tag))]
+
+    entity_type_names = list(zero_centered_Ps.keys())
+
+    tables = dict()
+
+    combined_array_rank = None
+    combined_array_mean_value = None
+
+    for entity_type in entity_type_names:
+        sort_index = explanations_nparray_dict[entity_type].mean(axis=0).argsort(axis=0)[::-1]
+        sort_index = {sort_index_value: (idx+1) for idx, sort_index_value in enumerate(sort_index)}
+
+                # tables[entity_type] = \
+        #     [[sort_index[idx], mean_values[idx]] for idx in range(len(id_to_morpho_tag))]
+
+        if combined_array_rank is not None:
+            combined_array_rank = np.concatenate((combined_array_rank,
+                                                  [[sort_index[idx]] for idx in range(len(id_to_morpho_tag))]),
+                                                 axis=1)
+        else:
+            combined_array_rank = [[sort_index[idx]] for idx in range(len(id_to_morpho_tag))]
+
+        if print_mean_values:
+            if normalize:
+                mean_values = np.exp(explanations_nparray_dict[entity_type].mean(axis=0)) \
+                              / np.exp(explanations_nparray_dict[entity_type].mean(axis=0)).sum()
+            else:
+                mean_values = explanations_nparray_dict[entity_type].mean(axis=0)
+            if combined_array_mean_value is not None:
+                combined_array_mean_value = np.concatenate((combined_array_mean_value,
+                                                      [[mean_values[idx]] for idx in range(len(id_to_morpho_tag))]),
+                                                     axis=1)
+            else:
+                combined_array_mean_value = [[mean_values[idx]] for idx in range(len(id_to_morpho_tag))]
+
+    stats_part_rank = np.concatenate(
+        (np.median(combined_array_rank[:,::2], axis=1).reshape(combined_array_rank.shape[0], -1),
+         np.std(combined_array_rank[:,1::2], axis=1).reshape(combined_array_rank.shape[0], -1)),
+        axis=1)
+
+    if print_mean_values:
+        stats_part_mean_value = np.concatenate(
+            (np.median(combined_array_mean_value[:,::2], axis=1).reshape(combined_array_mean_value.shape[0], -1),
+             np.std(combined_array_mean_value[:,1::2], axis=1).reshape(combined_array_mean_value.shape[0], -1)),
+            axis=1)
+
+        last_positive_mean_valued_rank = (combined_array_mean_value > 0) * (combined_array_rank) + \
+                                         (combined_array_mean_value <= 0) * (-1 * combined_array_rank)
+        combined_array_rank = np.concatenate((last_positive_mean_valued_rank, stats_part_rank), axis=1)
+    else:
+        if print_top_center_bottom:
+            top_counts = np.sum(combined_array_rank <= ((len(id_to_morpho_tag)//10)+1), axis=1).reshape((len(id_to_morpho_tag), -1))
+            bottom_counts = np.sum(combined_array_rank >= (len(id_to_morpho_tag)-(len(id_to_morpho_tag)//10)+1), axis=1).reshape((len(id_to_morpho_tag), -1))
+            top_plus_bottom_counts = (top_counts+bottom_counts)
+            center_counts = (len(id_to_morpho_tag)-(top_counts+bottom_counts))
+            combined_array_rank = np.concatenate((top_counts, bottom_counts, top_plus_bottom_counts, center_counts), axis=1)
+        else:
+            combined_array_rank = np.concatenate((combined_array_rank, stats_part_rank), axis=1)
+
+    df_results = pd.DataFrame([[morpho_tag_names[idx]] + list(x) for idx, x in enumerate(combined_array_rank)],
+                              columns=["Morphological Tag", "top", "bottom", "top_plus_bottom", "center"]).sort_values(by=["top_plus_bottom"],
+                                                                                                                       ascending=False)
+
+    def to_int(x):
+        return ('\\underline{%d}' % -x) if x < 0 else ("%d" % x)
+
+    def low_precision(x):
+        return "%01.02E" % x
+
+    if print_top_center_bottom:
+        formatters = [lambda x: x] + [to_int] * (4)
+        header = ["Morphological Tag", "top", "bottom", "top_plus_bottom", "center"]
+    else:
+        formatters = [lambda x: x] + [to_int] * (len(zero_centered_Ps.keys())+2)
+        header = ["Morphological Tag"] + \
+                 ["%s" % (entity_type_names[i]) for i in range(len(zero_centered_Ps.keys()))] + \
+                 ["median rank", "std rank"]
+
+    with open("%s-table_morpho_tag_vs_entity_types" % language_name, "w") as f:
+        output_str = "\\begin{table}\n" + \
+                    df_results.to_latex(header=header,
+                                      index=False,
+                                      formatters=formatters,
+                                      escape=False) + "\n" + \
+                    "\\caption{%s RANK table_morpho_tag_vs_entity_types \label{tab:table_morpho_tag_vs_entity_types_%s}}\n" % (language_name,
+                                                                                                                             language_name.lower()) + \
+                    "\\end{table}"
+        print(output_str, file=f)
+
+    if print_mean_values:
+
+        combined_array_mean_value = np.concatenate((combined_array_mean_value, stats_part_mean_value), axis=1)
+
+        df_results = pd.DataFrame([[morpho_tag_names[idx]] + list(x) for idx, x in enumerate(combined_array_mean_value)])
+
+        def to_int(x):
+            return str(int(x))
+
+        def low_precision(x):
+            return "%01.02E" % x
+
+        formatters = [lambda x: x] + [low_precision] * (len(zero_centered_Ps.keys()) + 2)
+
+        print("\\begin{table}")
+        print(df_results.to_latex(header=["Morphological Tag"] +
+                                         ["%s" % (entity_type_names[i]) for i in range(len(zero_centered_Ps.keys()))] +
+                                         ["median mean_value", "std mean_value"],
+                                  index=False,
+                                  formatters=formatters,
+                                  escape=False))
+        print("\\caption{%s MEAN VALUE table_morpho_tag_vs_entity_types \label{tab:table_morpho_tag_vs_entity_types_%s}}" % (
+                language_name,
+                language_name.lower()))
         print("\\end{table}")
         print("")
 
@@ -635,7 +819,9 @@ if __name__ == "__main__":
 
     data_dir = "./toolkit/xnlp/"
 
-    if args.command == "generate_explanations":
+    if args.command == "generate_binary_classification_problems":
+        generate_binary_classification_problems(args, data_dir)
+    elif args.command == "generate_explanations":
         lime_explanations, raw_explanations = generate_raw_explanations(args, data_dir)
         with open(os.path.join(data_dir, "explanations-for-ner-train-%s.txt" % args.model_label), "w") as out_f, \
                 open(os.path.join(data_dir, "regression-data-for-ner-train-%s.txt" % args.model_label), "w") as regression_data_f:
@@ -644,115 +830,224 @@ if __name__ == "__main__":
             for line in raw_explanations:
                 regression_data_f.write(line)
     elif args.command == "explain_using_raw_probs":
-        indexed_Cs, zero_centered_Ps, id_to_morpho_tag, explanations, explanations_nparray_dict = \
-            explain_using_raw_probs(args, data_dir)
+
         language_name = args.model_label.split("_")[0]
         language_name = language_name[0].upper() + language_name[1:]
-        top_and_bottom_morpho_tags_dict, unfiltered_means = generate_tables_in_latex(language_name,
-                                                                                     zero_centered_Ps,
-                                                                                     id_to_morpho_tag,
-                                                                                     explanations_nparray_dict)
-        from itertools import chain
-        for entity_type, top_and_bottom_morpho_tags in top_and_bottom_morpho_tags_dict.items():
-            if entity_type.startswith("ZERO_GROUP_") or entity_type.startswith("NEAR_ZERO_GROUP_"):
-                print("%s=%s" % (entity_type, top_and_bottom_morpho_tags))
-            else:
-                for idx, label in enumerate(["top", "bottom", "zero", "near_zero"] +
-                                            list(chain.from_iterable(zip(["top%02d" % i for i in range(1, 10)],
-                                                                         ["bottom%02d" % i for i in range(1, 10)])))):
-                    print("%s_morpho_tags_%s=%s" % (entity_type, label, ",".join([str(x[0]) for x in top_and_bottom_morpho_tags[idx]])))
-        print("")
 
+        indexed_Cs, zero_centered_Ps, id_to_morpho_tag, explanations, explanations_nparray_dict = \
+            explain_using_raw_probs(args.model_label, data_dir)
 
+        # histograms among the corpus per morpho tag
 
-        import matplotlib.pyplot as plt
-        statistics = defaultdict(list)
-        means_by_type = defaultdict(list)
-        entity_types = unfiltered_means.keys()
-        for entity_type in entity_types:
-            unfiltered_means_for_entity_type = unfiltered_means[entity_type]
-            statistics[entity_type].append(print_statistics_about_vector(unfiltered_means_for_entity_type))
+        q_range = list(np.linspace(0, 1, 100))
+        q_range_for_pandas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
-            positive_side = np.array([x for x in unfiltered_means_for_entity_type if x > 0])
-            statistics[entity_type].append(print_statistics_about_vector(positive_side))
-            plot_histogram(positive_side,
-                           "%s-%s-positive-side-histogram.png" % (language_name,
-                                                                         entity_type))
-            negative_side = np.array([x for x in unfiltered_means_for_entity_type if x < 0])
-            statistics[entity_type].append(print_statistics_about_vector(negative_side))
-            plot_histogram(negative_side,
-                           "%s-%s-negative-side-histogram.png" % (language_name,
-                                                                  entity_type))
+        statistics_over_sentences = []
+        norm_statistics_over_sentences = []
+        norm_explanations_nparray_dict = dict()
+        for entity_type in zero_centered_Ps.keys():
+            explanations_nparray_dict[entity_type] = explanations_nparray_dict[entity_type][
+                np.argwhere(np.std(explanations_nparray_dict[entity_type], axis=1) != 0)].squeeze()
+            # print(list(np.std(explanations_nparray_dict[entity_type], axis=1)))
+            norm_explanations_nparray_dict[entity_type] = (explanations_nparray_dict[entity_type]-np.mean(explanations_nparray_dict[entity_type], axis=1, keepdims=True))/np.std(explanations_nparray_dict[entity_type], axis=1, keepdims=True)
+            # print(norm_explanations_nparray_dict)
+            # print(np.sum(norm_explanations_nparray_dict[entity_type] == np.nan))
 
-            positive_side_scaled = positive_side / np.max(positive_side)
-            statistics[entity_type].append(print_statistics_about_vector(positive_side_scaled))
-            plot_histogram(positive_side_scaled,
-                           "%s-%s-positive-side-scaled-histogram.png" % (language_name,
-                                                                  entity_type),
-                           width=0.001)
+            for norm_or_not_label, curr_explanations_nparray_dict, curr_statistics_over_sentences in \
+                    [("norm", norm_explanations_nparray_dict, norm_statistics_over_sentences),
+                     ("unnorm", explanations_nparray_dict, statistics_over_sentences)]:
+                for morpho_tag_id, morpho_tag_label in id_to_morpho_tag.items():
+                    print(entity_type, morpho_tag_label)
+                    importance_values: np.ndarray = curr_explanations_nparray_dict[entity_type][:, morpho_tag_id]
+                    print(len(importance_values))
+                    print(type(importance_values))
+                    print(np.sum(importance_values == np.nan))
+                    # print(importance_values)
+                    # print(list(importance_values))
+                    print(importance_values.shape, importance_values.mean(), importance_values.std())
+                    plot_filename = "-".join([language_name, entity_type, morpho_tag_label, norm_or_not_label])
+                    var = np.var(importance_values)
+                    stddev = np.std(importance_values)
+                    mean = np.mean(importance_values)
+                    median = np.median(importance_values)
+                    min_val = np.min(importance_values)
+                    max_val = np.max(importance_values)
+                    print(var, stddev, mean, min_val, max_val)
+                    # q_range = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
-            negative_side_scaled = negative_side / np.min(negative_side)
-            statistics[entity_type].append(print_statistics_about_vector(negative_side_scaled))
-            plot_histogram(negative_side_scaled,
-                           "%s-%s-negative-side-scaled-histogram.png" % (language_name,
-                                                                         entity_type),
-                           width=0.001)
+                    quantile_counts = [np.sum(importance_values < np.quantile(importance_values, q))
+                                       for q in q_range]
+                    quantile_counts_for_pandas = [np.sum(importance_values < np.quantile(importance_values, q))
+                                       for q in q_range_for_pandas]
+                    counts, edge_values = np.histogram(importance_values, 500)
+                    # print(edge_values)
+                    ### Commented out on 09/06/2019 14:20 to help with the speed!
+                    # plt.figure(figsize=(10, 7))
+                    # plt.subplot(2, 1, 1)
+                    # plt.bar(edge_values,
+                    #         np.concatenate((counts, np.array([1]))),
+                    #         width=(edge_values[1]-edge_values[0])/2)
+                    # plt.title("histogram: " + plot_filename + " " + " | ".join(["%.03e" % x for x in [min_val, median, max_val, (max_val-min_val), mean, stddev, var]]))
+                    # plt.subplot(2, 1, 2)
+                    # plt.bar(q_range,
+                    #         quantile_counts,
+                    #         width=(edge_values[1]-edge_values[0])/2)
+                    # plt.title("quantile counts: " + plot_filename + " " + " | ".join(["%.03e" % x for x in [min_val, median, max_val, (max_val-min_val), mean, stddev, var]]))
+                    # plt.savefig(plot_filename+".eps", format='eps', dpi=900)
+                    # plt.close()
+                    curr_statistics_over_sentences.append([entity_type, morpho_tag_label,
+                                                      min_val, median, max_val, (max_val-min_val), mean, stddev, var] + quantile_counts_for_pandas)
+                    # sys.exit(3)
 
-            for zeros in ["on", "off"]:
-                plot_filename = "%s-%s-means-histogram-zeros-%s.png" % (language_name, entity_type, zeros)
-                if zeros == "off":
-                    unfiltered_means_for_entity_type_for_hist = [x for x in unfiltered_means_for_entity_type
-                                                        if np.abs(x) > 10e-6]
-                else:
-                    unfiltered_means_for_entity_type_for_hist = unfiltered_means_for_entity_type
-                counts, edge_values = plot_histogram(unfiltered_means_for_entity_type_for_hist, plot_filename)
-                # sns_plot = sns.distplot(unfiltered_means_for_entity_type, 50)
-                #fig = sns_plot.get_figure()
-                # fig.savefig(plot_filename)
+        # sys.exit(3)
 
-                # counts, edge_values = np.histogram(unfiltered_means_for_entity_type, 50)
-                # plt.bar(edge_values, counts)
-                # plt.savefig(plot_filename)
-                print("%s\n%s\n%s" % (entity_type,
-                                      language_name,
-                                      plot_filename))
+        for norm_or_not_label, curr_explanations_nparray_dict, curr_statistics_over_sentences in \
+                [("norm", norm_explanations_nparray_dict, norm_statistics_over_sentences),
+                 ("unnorm", explanations_nparray_dict, statistics_over_sentences)]:
+            df_results = pd.DataFrame(curr_statistics_over_sentences,
+                                      index=["-".join([x[0], x[1]]) for x in curr_statistics_over_sentences])
+            df_results.to_csv("%s-statistics_over_sentences-%s.csv" % (language_name, norm_or_not_label),
+                              header=["Entity Type", "Morpho Tag", "min", "median", "max", "spread", "mean", "std", "var"] +
+                                     ["q_%.01f" % x for x in q_range_for_pandas])
+        # print("\\begin{table}")
+        # print(df_results.to_latex(header=["Entity Type", "Morpho Tag", "min", "max", "mean", "std", "var"], index=False))
+        # print("\\end{table}")
+        # print("")
 
-            print("XXXX unchanged: %s" % str(unfiltered_means_for_entity_type.shape))
-            means_by_type["unchanged"] += [unfiltered_means_for_entity_type]
-            print("XXXX positive_side: %s" % str(positive_side.shape))
-            means_by_type["positive"] += [np.concatenate((positive_side, [np.nan] * (len(unfiltered_means_for_entity_type)-len(positive_side))))]
-            means_by_type["negative"] += [np.concatenate((negative_side, [np.nan] * (len(unfiltered_means_for_entity_type)-len(negative_side))))]
-            means_by_type["positive_scaled"] += [np.concatenate((positive_side_scaled, [np.nan] * (len(unfiltered_means_for_entity_type)-len(positive_side_scaled))))]
-            means_by_type["negative_scaled"] += [np.concatenate((negative_side_scaled, [np.nan] * (len(unfiltered_means_for_entity_type)-len(negative_side_scaled))))]
+        ### Commented out at 09/06/2019 14:24 as we are not dealing with unnormalized values!
+        # top_and_bottom_morpho_tags_dict, unfiltered_means = generate_tables_in_latex(language_name,
+        #                                                                              zero_centered_Ps,
+        #                                                                              id_to_morpho_tag,
+        #                                                                              explanations_nparray_dict)
 
-        for mean_type in "unchanged positive negative positive_scaled negative_scaled".split(" "):
-            print(mean_type)
-            print(np.array(means_by_type[mean_type]).shape)
-            _df = pd.DataFrame(np.array(means_by_type[mean_type]).T, columns=entity_types)
-            plt.figure()
-            _df.boxplot()
-            title = "boxplot-%s_%s_corpus_average_statistics_all_entities.png" % (language_name, mean_type)
-            plt.title(title)
-            plt.savefig(title)
-            plt.close()
+        _, _ = generate_tables_in_latex(language_name,
+                                        zero_centered_Ps,
+                                        id_to_morpho_tag,
+                                        norm_explanations_nparray_dict)
 
+        ### Commented out at 09/06/2019 14:24 to help with the speed!
+        # from itertools import chain
+        # for entity_type, top_and_bottom_morpho_tags in top_and_bottom_morpho_tags_dict.items():
+        #     if entity_type.startswith("ZERO_GROUP_") or entity_type.startswith("NEAR_ZERO_GROUP_"):
+        #         print("%s=%s" % (entity_type, top_and_bottom_morpho_tags))
+        #     else:
+        #         for idx, label in enumerate(["top", "bottom", "zero", "near_zero"] +
+        #                                     list(chain.from_iterable(zip(["top%02d" % i for i in range(1, 10)],
+        #                                                                  ["bottom%02d" % i for i in range(1, 10)])))):
+        #             print("%s_morpho_tags_%s=%s" % (entity_type, label, ",".join([str(x[0]) for x in top_and_bottom_morpho_tags[idx]])))
+        # print("")
 
-        generate_statistics_tables_in_latex(statistics,
-                                            "unchanged positive negative positive_scaled negative_scaled".split(" "),
-                                            "var mean min max n_positive n_negative".split(" ")
-                                            + ["q%.02lf" % q for q in [0.1, 0.25, 0.5, 0.75, 0.9]])
-        generate_statistics_tables_over_entities_in_latex(statistics,
-                                                          "unchanged positive negative positive_scaled negative_scaled".split(" "),
-                                                          "var mean min max n_positive n_negative".split(" "))
-        generate_statistics_tables_over_entities_in_latex(statistics,
-                                                          "unchanged positive negative positive_scaled negative_scaled".split(" "),
-                                                          ["q%.02lf" % q for q in [0.1, 0.25, 0.5, 0.75, 0.9]],
-                                                          start_index=6)
+        ### Commented out at 09/06/2019 14:24 as we are not dealing with unnormalized values!
+        # import matplotlib.pyplot as plt
+        # statistics = defaultdict(list)
+        # means_by_type = defaultdict(list)
+        # entity_types = unfiltered_means.keys()
+        # for entity_type in entity_types:
+        #     unfiltered_means_for_entity_type = unfiltered_means[entity_type]
+        #     statistics[entity_type].append(print_statistics_about_vector(unfiltered_means_for_entity_type))
+        #
+        #     positive_side = np.array([x for x in unfiltered_means_for_entity_type if x > 0])
+        #     statistics[entity_type].append(print_statistics_about_vector(positive_side))
+        #     plot_histogram(positive_side,
+        #                    "%s-%s-positive-side-histogram.png" % (language_name,
+        #                                                                  entity_type))
+        #     negative_side = np.array([x for x in unfiltered_means_for_entity_type if x < 0])
+        #     statistics[entity_type].append(print_statistics_about_vector(negative_side))
+        #     plot_histogram(negative_side,
+        #                    "%s-%s-negative-side-histogram.png" % (language_name,
+        #                                                           entity_type))
+        #
+        #     positive_side_scaled = positive_side / np.max(positive_side)
+        #     statistics[entity_type].append(print_statistics_about_vector(positive_side_scaled))
+        #     plot_histogram(positive_side_scaled,
+        #                    "%s-%s-positive-side-scaled-histogram.png" % (language_name,
+        #                                                           entity_type),
+        #                    width=0.001)
+        #
+        #     negative_side_scaled = negative_side / np.min(negative_side)
+        #     statistics[entity_type].append(print_statistics_about_vector(negative_side_scaled))
+        #     plot_histogram(negative_side_scaled,
+        #                    "%s-%s-negative-side-scaled-histogram.png" % (language_name,
+        #                                                                  entity_type),
+        #                    width=0.001)
+        #
+        #     for zeros in ["on", "off"]:
+        #         plot_filename = "%s-%s-means-histogram-zeros-%s.png" % (language_name, entity_type, zeros)
+        #         if zeros == "off":
+        #             unfiltered_means_for_entity_type_for_hist = [x for x in unfiltered_means_for_entity_type
+        #                                                 if np.abs(x) > 10e-6]
+        #         else:
+        #             unfiltered_means_for_entity_type_for_hist = unfiltered_means_for_entity_type
+        #         counts, edge_values = plot_histogram(unfiltered_means_for_entity_type_for_hist, plot_filename)
+        #         # sns_plot = sns.distplot(unfiltered_means_for_entity_type, 50)
+        #         #fig = sns_plot.get_figure()
+        #         # fig.savefig(plot_filename)
+        #
+        #         # counts, edge_values = np.histogram(unfiltered_means_for_entity_type, 50)
+        #         # plt.bar(edge_values, counts)
+        #         # plt.savefig(plot_filename)
+        #         print("%s\n%s\n%s" % (entity_type,
+        #                               language_name,
+        #                               plot_filename))
+        #
+        #     print("XXXX unchanged: %s" % str(unfiltered_means_for_entity_type.shape))
+        #     means_by_type["unchanged"] += [unfiltered_means_for_entity_type]
+        #     print("XXXX positive_side: %s" % str(positive_side.shape))
+        #     means_by_type["positive"] += [np.concatenate((positive_side, [np.nan] * (len(unfiltered_means_for_entity_type)-len(positive_side))))]
+        #     means_by_type["negative"] += [np.concatenate((negative_side, [np.nan] * (len(unfiltered_means_for_entity_type)-len(negative_side))))]
+        #     means_by_type["positive_scaled"] += [np.concatenate((positive_side_scaled, [np.nan] * (len(unfiltered_means_for_entity_type)-len(positive_side_scaled))))]
+        #     means_by_type["negative_scaled"] += [np.concatenate((negative_side_scaled, [np.nan] * (len(unfiltered_means_for_entity_type)-len(negative_side_scaled))))]
+        #
+        # for mean_type in "unchanged positive negative positive_scaled negative_scaled".split(" "):
+        #     print(mean_type)
+        #     print(np.array(means_by_type[mean_type]).shape)
+        #     _df = pd.DataFrame(np.array(means_by_type[mean_type]).T, columns=entity_types)
+        #     plt.figure()
+        #     _df.boxplot()
+        #     title = "boxplot-%s_%s_corpus_average_statistics_all_entities.png" % (language_name, mean_type)
+        #     plt.title(title)
+        #     plt.savefig(title)
+        #     plt.close()
+        #
 
-        generate_tables_with_cumsum_in_latex(language_name,
-                                 zero_centered_Ps,
-                                 id_to_morpho_tag,
-                                 explanations_nparray_dict)
+        ### Commented out at 09/06/2019 14:24 as we are not dealing with unnormalized values!
+        # generate_statistics_tables_in_latex(statistics,
+        #                                     "unchanged positive negative positive_scaled negative_scaled".split(" "),
+        #                                     "var mean min max n_positive n_negative".split(" ")
+        #                                     + ["q%.02lf" % q for q in [0.1, 0.25, 0.5, 0.75, 0.9]])
+        # generate_statistics_tables_over_entities_in_latex(statistics,
+        #                                                   "unchanged positive negative positive_scaled negative_scaled".split(" "),
+        #                                                   "var mean min max n_positive n_negative".split(" "))
+        # generate_statistics_tables_over_entities_in_latex(statistics,
+        #                                                   "unchanged positive negative positive_scaled negative_scaled".split(" "),
+        #                                                   ["q%.02lf" % q for q in [0.1, 0.25, 0.5, 0.75, 0.9]],
+        #                                                   start_index=6)
+
+        ### Commented out at 09/06/2019 14:24 as we are not dealing with unnormalized values!
+        # generate_tables_with_cumsum_in_latex(language_name,
+        #                          zero_centered_Ps,
+        #                          id_to_morpho_tag,
+        #                          explanations_nparray_dict)
+
+        generate_tables_with_cumsum_in_latex("Norm"+language_name,
+                                             zero_centered_Ps,
+                                             id_to_morpho_tag,
+                                             norm_explanations_nparray_dict)
+
+        generate_table_morpho_tag_vs_entity_types("NormTableMorphoTagsVSEntityTypes"+language_name,
+                                                 zero_centered_Ps,
+                                                 id_to_morpho_tag,
+                                                 norm_explanations_nparray_dict,
+                                                 print_mean_values=False,
+                                                  print_top_center_bottom=True)
+
+        # Commented on 04/07/2019 for speed
+        # generate_table_morpho_tag_vs_entity_types("UnNormTableMorphoTagsVSEntityTypes" + language_name,
+        #                                           zero_centered_Ps,
+        #                                           id_to_morpho_tag,
+        #                                           explanations_nparray_dict,
+        #                                           normalize=False)
+
         # print(id_to_morpho_tag)
     elif args.command == "perturbate_tree":
         perturbate_tree_using_random_walk(args)
