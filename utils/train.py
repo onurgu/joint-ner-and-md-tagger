@@ -60,6 +60,9 @@ def train(sys_argv):
 
     # Build the model
     model.build(training=True, **parameters)
+    if opts.reload == 1 and opts.model_epoch_path:
+        print("Resuming from %s" % os.path.join(models_path, opts.model_path, opts.model_epoch_path))
+        model.reload(os.path.join(models_path, opts.model_path, opts.model_epoch_path))
 
     ### At this point, the training data is encoded in our format.
 
