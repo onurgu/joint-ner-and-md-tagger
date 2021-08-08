@@ -2,6 +2,7 @@
 import codecs
 import os
 import subprocess
+import sys
 import tempfile
 
 from utils import tokenizer
@@ -67,9 +68,9 @@ def get_morph_analyzes(line, lang="turkish"):
     else:
         tokens = tokenizer.tokenize(line.decode("utf8"))
     fd, f_path = tempfile.mkstemp()
-    with open(f_path, "w") as f:
+    with open(f_path, "w", encoding="iso-8859-9") as f:
         for token in tokens:
-            f.write(token.encode("iso-8859-9") + "\n")
+            f.write(token + "\n")
     os.close(fd)
     print(f_path)
     with codecs.open(f_path, "r", encoding="iso-8859-9") as f, open(os.devnull, "w") as devnull:
@@ -84,3 +85,7 @@ def get_morph_analyzes(line, lang="turkish"):
     # print string_output.decode("iso-8859-9").encode('utf8')
     # print type(string_output.decode("iso-8859-9"))
     return string_output
+
+if __name__ == "__main__":
+    print(get_morph_analyzes(sys.argv[1]).decode("iso-8859-9"))
+

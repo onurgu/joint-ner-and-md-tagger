@@ -1049,5 +1049,29 @@ if __name__ == "__main__":
         #                                           normalize=False)
 
         # print(id_to_morpho_tag)
+    elif args.command == "explain_using_raw_probs_multiple_features":
+
+        language_name = args.model_label.split("_")[0]
+        language_name = language_name[0].upper() + language_name[1:]
+
+        indexed_Cs, zero_centered_Ps, id_to_morpho_tag, explanations, explanations_nparray_dict = \
+            explain_using_raw_probs(args.model_label, data_dir)
+
+        statistics_over_sentences = []
+        norm_statistics_over_sentences = []
+        norm_explanations_nparray_dict = dict()
+        for entity_type in zero_centered_Ps.keys():
+            explanations_nparray_dict[entity_type] = explanations_nparray_dict[entity_type][
+                np.argwhere(np.std(explanations_nparray_dict[entity_type], axis=1) != 0)].squeeze()
+            norm_explanations_nparray_dict[entity_type] = (explanations_nparray_dict[entity_type] - np.mean(
+                explanations_nparray_dict[entity_type], axis=1, keepdims=True)) / np.std(
+                explanations_nparray_dict[entity_type], axis=1, keepdims=True)
+
+            # for norm_or_not_label, curr_explanations_nparray_dict, curr_statistics_over_sentences in \
+            #         [("norm", norm_explanations_nparray_dict, norm_statistics_over_sentences),
+            #          ("unnorm", explanations_nparray_dict, statistics_over_sentences)]:
+            #     for morpho_tag_id, morpho_tag_label in id_to_morpho_tag.items():
+            #         print(entity_type, morpho_tag_label)
+
     elif args.command == "perturbate_tree":
         perturbate_tree_using_random_walk(args)

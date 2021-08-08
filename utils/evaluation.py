@@ -226,8 +226,8 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path, modify_paths_
             if type(opts.__dict__[arg_name]) == str:
                 opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
                                                                       "/Users/onur.gungor/Desktop/projects/research/datasets-to-TRUBA/")
-                if "/Users/onur.gungor/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
-                    opts.__dict__[arg_name] += ".short"
+                # if "/Users/onur.gungor/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
+                #     opts.__dict__[arg_name] += ".short"
 
     print(opts)
     # Prepare the data
