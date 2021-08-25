@@ -275,7 +275,13 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
             return "*BLANK*"
         else:
             return x
-
+    print(sentence)
+    print(morpho_tag_type)
+    print(morpho_tags)
+    print(morpho_tag_column_index)
+    print(file_format)
+    print(morpho_tag_separator)
+    print(use_all_analyses)
     for word in sentence:
         if morpho_tag_type.startswith('wo_root'):
             if morpho_tag_type == 'wo_root_after_DB' and morpho_tag_column_index == 1: # this is only applicable to Turkish dataset
@@ -307,6 +313,8 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
                         tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
                         if len(tmp_morpho_tag.split(morpho_tag_separator)) == 1:
                             tmp_morpho_tag = morpho_tag_separator.join([tmp_morpho_tag, "*UNKNOWN*"])
+                    print(word)
+                    print(tmp_morpho_tag)
                     morpho_tags += [list(map(fix_BLANK, [tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[-1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]))]
         elif morpho_tag_type.startswith('with_root'):
             if morpho_tag_column_index == 1:
@@ -344,8 +352,11 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
 
 
 def contains_golden_label(word, type):
-    misc_dict = load_MISC_column_contents(word[9])
-    return type in list(misc_dict.keys())
+    if len(word) == 10:
+        misc_dict = load_MISC_column_contents(word[9])
+        return type in list(misc_dict.keys())
+    else:
+        return False
 
 
 def extract_specific_single_field_content_from_conllu(word, field_name):

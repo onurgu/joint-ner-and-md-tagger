@@ -38,6 +38,7 @@ def eval_with_specific_model(model,
     active_models = model.parameters['active_models']
     id_to_tag = model.id_to_tag
     tag_scheme = model.parameters['t_s']
+    print(model.parameters)
 
     f_scores = {"ner":{}}
     # dataset_labels = ["dev", "test", "yuret"]
@@ -290,7 +291,7 @@ def predict_sentences_given_model(sentences_string, model):
                                                                        conll=True,
                                                                        for_prediction=True)
 
-    dataset_file_string = dataset_file_string.decode('iso-8859-9')
+    # dataset_file_string = dataset_file_string.decode('iso-8859-9')
     # import sys
     # sys.exit(1)
 
@@ -309,6 +310,8 @@ def predict_sentences_given_model(sentences_string, model):
         model.parameters['mt_d'], model.parameters['mt_t'], model.parameters['mt_ci'],
         morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "|")
     )
+
+    print("sentences_data: ", sentences_data)
 
     f_scores, morph_accuracies, labeled_sentences = \
         predict_tags_given_model_and_input([('tagger_output', sentences_data)],

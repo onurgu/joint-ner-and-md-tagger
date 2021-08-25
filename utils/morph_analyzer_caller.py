@@ -7,7 +7,7 @@ import tempfile
 from utils import tokenizer
 
 analyzer_paths = {'turkish': './utils/analyzers/turkish/'}
-analyzer_command = {'turkish': ["./bin/lookup",
+analyzer_command = {'turkish': ["./bin.linux64/lookup",
                                 "-latin1",
                                 "-f",
                                 "tfeatures.scr"]}
@@ -37,7 +37,7 @@ def create_single_word_single_line_format(morph_analyzer_output_for_a_single_sen
             if subline_idx == 0:
                 current_single_line += tokens[0]
                 if conll:
-                    current_single_line += " " + "_"
+                    current_single_line += " " + tokens[1] + tokens[2]
                 current_single_line += " " + tokens[1] + tokens[2]
             else:
                 current_single_line += " " + tokens[1] + tokens[2]
@@ -67,9 +67,9 @@ def get_morph_analyzes(line, lang="turkish"):
     else:
         tokens = tokenizer.tokenize(line.decode("utf8"))
     fd, f_path = tempfile.mkstemp()
-    with open(f_path, "w") as f:
+    with codecs.open(f_path, "w", encoding="iso-8859-9") as f:
         for token in tokens:
-            f.write(token.encode("iso-8859-9") + "\n")
+            f.write(token + "\n")
     os.close(fd)
     print(f_path)
     with codecs.open(f_path, "r", encoding="iso-8859-9") as f, open(os.devnull, "w") as devnull:
@@ -79,8 +79,8 @@ def get_morph_analyzes(line, lang="turkish"):
                                                 cwd=analyzer_paths[lang],
                                                 stderr=devnull)
 
-    # print string_output
+    print(string_output.decode("iso-8859-9"))
     # print type(string_output)
     # print string_output.decode("iso-8859-9").encode('utf8')
     # print type(string_output.decode("iso-8859-9"))
-    return string_output
+    return string_output.decode("iso-8859-9")

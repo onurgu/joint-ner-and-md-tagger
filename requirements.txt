@@ -6,3 +6,5 @@ pymongo==3.*
 git+https://github.com/onurgu/sacred@onurgu_branch
 pandas
 dynet==2.0.3
+
+tornado==4.5.3
