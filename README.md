@@ -48,3 +48,20 @@ You should create or set permissions accordingly for ``` `pwd`/dataset ``` and `
 
 [1] Gungor, O., Uskudarli, S., Gungor, T., Improving Named Entity Recognition by Jointly Learning to 
 Disambiguate Morphological Tags, 2018, COLING 2018, 19-25 August, (to appear).
+
+## DIP Instructions
+
+`Dockerfile` should reside in the root directory. What can we do about this? Maybe the DIP should be informed about this
+kind of Dockerfiles in some way?
+
+I will provide the model files as a single tar file.
+
+```bash
+docker build -t yourimagename:yourversion .
+```
+
+```bash
+docker run -ti -p 8080:8080 -v `pwd`/dataset:/opt/ner-tagger-dynet/dataset -v `pwd`/models:/opt/ner-tagger-dynet/models yourimagename:yourversion python main.py --command webapp --model_path model-00002714 --model_epoch_path model-epoch-00000026 --port 8080
+```
+
+
