@@ -1,0 +1,21 @@
+{
+  "name": "root",
+  "schema": {
+    "title": "Türkçe NER",
+    "description": "İşaretlemek istediğiniz cümleyi giriniz.",
+    "type": "object",
+    "properties": {
+      "password": {
+        "type": "string",
+        "title": "Cümle",
+        "minLength": 50
+      }
+    }
+  },
+  "uiSchema": {
+    "password": {
+      "ui:widget": "textarea",
+      "ui:help": "Tek bir satırda tek bir cümle olmalı."
+    }
+  }
+}

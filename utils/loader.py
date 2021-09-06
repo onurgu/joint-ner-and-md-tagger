@@ -458,7 +458,8 @@ def prepare_dataset(sentences,
                     morpho_tag_type='wo_root',
                     morpho_tag_column_index=1,
                     file_format="conll",
-                    morpho_tag_separator="+"):
+                    morpho_tag_separator="+",
+                    for_prediction=True):
     """
     Prepare the dataset. Return a list of lists of dictionaries containing:
         - word indexes
@@ -656,6 +657,8 @@ def prepare_dataset(sentences,
 
         if contains_golden_label(sentence[0], "NER_TAG"):
             data_item['tag_ids'] = ner_labels
+        elif for_prediction:
+            data_item['tag_ids'] = [tag_to_id['O'] for _ in range(len(words))]
         else:
             data_item['tag_ids'] = []
 
@@ -980,14 +983,15 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     # print 'Saving the mappings to disk...'
     # model.save_mappings(id_to_word, id_to_char, id_to_tag, id_to_morpho_tag)
 
-    return data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
+    # return data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
 
-    # if for_training:
-    #     return data_dict, id_to_tag, word_to_id, stats_dict, parameters['t_s']
-    #     # return dev_data, {}, id_to_tag, parameters['t_s'], test_data, \
-    #     #        train_data, train_stats, word_to_id, yuret_test_data, yuret_train_data
-    # else:
-    #     return dev_data, {}, id_to_tag, parameters['t_s'], test_data, [], {}, word_to_id, yuret_test_data, []
+    if for_training:
+        # return data_dict, id_to_tag, word_to_id, stats_dict, parameters['t_s']
+        return data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
+        # return dev_data, {}, id_to_tag, parameters['t_s'], test_data, \
+        #        train_data, train_stats, word_to_id, yuret_test_data, yuret_train_data
+    else:
+        return dev_data, {}, id_to_tag, parameters['t_s'], test_data, [], {}, word_to_id, yuret_test_data, []
 
 
 def extract_mapping_dictionaries_from_model(model):

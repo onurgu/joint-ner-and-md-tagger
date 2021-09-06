@@ -107,6 +107,8 @@ def eval_with_specific_model(model,
 
                     if active_models in [2, 3] and label in "ner md".split(" "):
                         selected_morph_analyzes, decoded_tags = model.predict(sentence)
+                        print("decoded_tags: ", decoded_tags)
+                        print("selected_morph_analyzes: ", selected_morph_analyzes)
                     elif active_models in [1] and label == "md":
                         selected_morph_analyzes, _ = model.predict(sentence)
                     elif active_models in [0] and label == "ner":
@@ -125,6 +127,8 @@ def eval_with_specific_model(model,
                             predictions.append(new_line)
                             count[y_real, y_pred] += 1
                         predictions.append("")
+
+                    print("predictions: ", predictions)
 
                     if active_models in [1, 2, 3] and label == "md":
                         n_correct_morph_disambs = \
@@ -251,6 +255,9 @@ def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_pat
                                                          parameters,
                                                          for_training=False)
 
+    print("dev_data: ", dev_data)
+    print("test_data: ", test_data)
+
     datasets_to_be_tested = [("dev", dev_data),
                              ("test", test_data)]
 
@@ -308,13 +315,20 @@ def predict_sentences_given_model(sentences_string, model):
         word_to_id, char_to_id, tag_to_id, morpho_tag_to_id,
         model.parameters['lower'],
         model.parameters['mt_d'], model.parameters['mt_t'], model.parameters['mt_ci'],
-        morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "|")
+        morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else "|"),
+        for_prediction=True
     )
 
     print("sentences_data: ", sentences_data)
 
+    # sentences_data = {'test': sentences_data}
+
+    datasets_to_be_tested = {label: {purpose: sentences_data
+                                     for purpose in ["dev", "test"]}
+                             for label in ["ner", "md"]}
+
     f_scores, morph_accuracies, labeled_sentences = \
-        predict_tags_given_model_and_input([('tagger_output', sentences_data)],
+        predict_tags_given_model_and_input(datasets_to_be_tested,
                                            model,
                                            return_result=True)
 

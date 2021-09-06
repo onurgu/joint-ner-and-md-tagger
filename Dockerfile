@@ -70,6 +70,8 @@ RUN pip install -r requirements.txt
 RUN mkdir dataset
 
 COPY evaluation/conlleval evaluation/
+COPY evaluation/conlleval.py evaluation/
+COPY evaluation/conlleval-runner.sh evaluation/
 RUN mkdir -p evaluation/temp/eval_logs/
 
 RUN mkdir models/

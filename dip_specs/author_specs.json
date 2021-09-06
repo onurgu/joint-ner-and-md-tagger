@@ -1,0 +1,22 @@
+{
+    "tr": {
+        "project_name": "Türkçe NER",
+        "task_description": "Bir cümledeki özel isimleri, yer adlarını ve kurum adlarını tespit eder.",
+        "usage_info": "Tek bir cümle girilebilir."
+    },
+    "en": {
+        "project_name": "Turkish NER",
+        "task_description": "This tool detects the named entities in the given Turkish sentence.",
+
+        "usage_info": "Input a single Turkish sentence in a single line."
+    },
+
+    "contact_info": "onurgu@gmail.com",
+    "paper_names": ["Improving Named Entity Recognition by Jointly Learning to Disambiguate Morphological Tags"],
+    "paper_handles": ["https://aclanthology.org/C18-1177"],
+    "paper_authors": ["Onur Güngör, Suzan Uskudarli, Tunga Güngör"],
+    "program_authors": ["Onur Güngör"],
+    "program_links": ["https://github.com/tabilab-dip/morphological_parser_sak"],
+    "example_sentences": [  "şekerleri yedim .\neve geldim .", "Bugun okula otobüsle gittim ."]
+
+}

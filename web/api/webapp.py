@@ -34,7 +34,7 @@ class DisambiguationHandler(tornado.web.RequestHandler):
 
         return {
             'dataset_file_string': {i: line.split(" ") for i, line in enumerate(dataset_file_string.split("\n")) if len(line) > 0},
-            'tagger_output': {i: line.split(" ") for i, line in enumerate(labeled_sentences['tagger_output']) if len(line) > 0}
+            'tagger_output': {i: line.split(" ") for i, line in enumerate(labeled_sentences['ner']['test']) if len(line) > 0}
         }
             # 'disambiguator_output': {i: {'surface_form': surface_form, 'analysis': analysis} for i, (surface_form, analysis) in enumerate(prediction_lines_raw)}}
 
@@ -43,7 +43,7 @@ class DisambiguationHandler(tornado.web.RequestHandler):
     def post(self):
 
         self.add_header("Access-Control-Allow-Origin", "*")
-        line = self.get_argument("single_line_sentence", default="Dünyaya hoş geldiniz.")
+        line = self.get_argument("textarea", default="Dünyaya hoş geldiniz.")
         # print type(line)
         print((line.encode("utf8")))
 
