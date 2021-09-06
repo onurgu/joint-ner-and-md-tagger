@@ -16,7 +16,7 @@
     "paper_handles": ["https://aclanthology.org/C18-1177"],
     "paper_authors": ["Onur Güngör, Suzan Uskudarli, Tunga Güngör"],
     "program_authors": ["Onur Güngör"],
-    "program_links": ["https://github.com/tabilab-dip/morphological_parser_sak"],
-    "example_sentences": [  "şekerleri yedim .\neve geldim .", "Bugun okula otobüsle gittim ."]
+    "program_links": ["https://github.com/onurgu/joint-ner-and-md-tagger/tree/DIPv0.0.1"],
+    "example_sentences": [  "Türkiye güzel bir ülkedir."]
 
 }
