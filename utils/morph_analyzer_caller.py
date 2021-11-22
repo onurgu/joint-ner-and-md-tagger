@@ -25,6 +25,7 @@ def create_single_word_single_line_format(morph_analyzer_output_for_a_single_sen
     :return:
     """
     lines = morph_analyzer_output_for_a_single_sentence.split("\n")
+    print(lines)
     if not conll:
         result = "<S> <S>+BSTag\n"
     else:
@@ -52,6 +53,7 @@ def create_single_word_single_line_format(morph_analyzer_output_for_a_single_sen
     if not conll:
         result = result[:-1]
         result += "</S> </S>+ESTag\n"
+    print(result)
     return result
 
 

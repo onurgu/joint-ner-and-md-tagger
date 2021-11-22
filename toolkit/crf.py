@@ -83,24 +83,31 @@ class CRF():
         alpha = log_sum_exp(terminal_expr)
         return alpha
 
-
     def viterbi_decoding(self, observations):
         backpointers = []
         init_vvars = [-1e10] * (self.n_tags + 2)
         init_vvars[self.b_id] = 0  # <Start> has all the probability
         for_expr = dynet.inputVector(init_vvars)
         trans_exprs = [self.transitions[idx] for idx in range(self.n_tags + 2)]
-        for obs in observations:
+        for obs_idx, obs in enumerate(observations):
             bptrs_t = []
             vvars_t = []
             for next_tag in range(self.n_tags + 2):
                 next_tag_expr = for_expr + trans_exprs[next_tag]
                 next_tag_arr = next_tag_expr.npvalue()
+                print("obs_idx: %02d, next_tag: %02d, for_expr: " % (obs_idx, next_tag), for_expr.value())
+                print("obs_idx: %02d, next_tag: %02d, trans_exprs[next_tag]: " % (obs_idx, next_tag), trans_exprs[next_tag].value())
+                print("obs_idx: %02d, next_tag: %02d, next_tag_arr: " % (obs_idx, next_tag), next_tag_arr)
                 best_tag_id = np.argmax(next_tag_arr)
                 bptrs_t.append(best_tag_id)
                 vvars_t.append(dynet.pick(next_tag_expr, best_tag_id))
+                print("obs_idx: %02d, next_tag: %02d, bptrs_t: " % (obs_idx, next_tag), bptrs_t)
+                print("obs_idx: %02d, next_tag: %02d, vvars_t: " % (obs_idx, next_tag), [x.value() for x in vvars_t])
+                input()
+            print("obs_idx: %02d, obs: %s" % (obs_idx, obs.value()))
             for_expr = dynet.concatenate(vvars_t) + obs
             backpointers.append(bptrs_t)
+            print("obs_idx: %02d, backpointers: %s" % (obs_idx, backpointers))
         # Perform final transition to terminal
         terminal_expr = for_expr + trans_exprs[self.e_id]
         terminal_arr = terminal_expr.npvalue()

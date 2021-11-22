@@ -855,6 +855,9 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     training_sets, max_sentence_lengths, max_word_lengths = \
         _prepare_datasets(opts, parameters, for_training=for_training)
 
+    print(training_sets.keys())
+    print(training_sets["ner"].keys())
+
     if not for_training:
         model.reload_mappings()
 

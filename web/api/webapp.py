@@ -18,9 +18,11 @@ class DisambiguationHandler(tornado.web.RequestHandler):
 
         if DisambiguationHandler.model is None:
 
+            print("loading")
             model, _, _ = initialize_model_with_pretrained_parameters(model_path,
                                                                       model_epoch_path,
                                                                       models_path)
+            print("loaded")
 
             DisambiguationHandler.model = model
 
@@ -28,6 +30,8 @@ class DisambiguationHandler(tornado.web.RequestHandler):
     def disambiguate_line(line):
 
         from utils.evaluation import predict_sentences_given_model
+
+        print(line)
 
         labeled_sentences, dataset_file_string = predict_sentences_given_model(line, DisambiguationHandler.model)
 

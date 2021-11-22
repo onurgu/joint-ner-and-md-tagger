@@ -247,10 +247,11 @@ def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_pat
                                                                           models_dir_path)
 
     # Prepare the data
-    dev_data, dico_words_train, \
-    id_to_tag, tag_scheme, test_data, \
-    train_data, train_stats, word_to_id, \
-    yuret_test_data, yuret_train_data = prepare_datasets(model,
+    # dev_data, dico_words_train, \
+    # id_to_tag, tag_scheme, test_data, \
+    # train_data, train_stats, word_to_id, \
+    # yuret_test_data, yuret_train_data = \
+    data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag = prepare_datasets(model,
                                                          opts,
                                                          parameters,
                                                          for_training=False)
@@ -358,6 +359,9 @@ def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_
     # Build the model
     model.build(training=False, **parameters)
     model.reload(os.path.join(models_dir_path, model_dir_path, model_epoch_dir_path))
+    print("Successfully reloaded a model from %s/%s" % (model_dir_path, model_epoch_dir_path))
+    print("with opts: %s", opts)
+    print("with parameters: %s", parameters)
     return model, opts, parameters
 
 
@@ -406,5 +410,6 @@ def predict_from_stdin(sys_argv):
     line = sys.stdin.readline()
     while line:
         # "ali ata bak\ndeneme deneme"
-        predict_sentences_given_model(line.decode("utf8"), model)
+        print("Input sentence: %s", line)
+        predict_sentences_given_model(line, model)
         line = sys.stdin.readline()
