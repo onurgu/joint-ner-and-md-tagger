@@ -60,6 +60,9 @@ def train(sys_argv):
 
     # Build the model
     model.build(training=True, **parameters)
+    if opts.reload == 1 and opts.model_epoch_path:
+        print("Resuming from %s" % os.path.join(models_path, opts.model_path, opts.model_epoch_path))
+        model.reload(os.path.join(models_path, opts.model_path, opts.model_epoch_path))
 
     ### At this point, the training data is encoded in our format.
 
@@ -139,10 +142,12 @@ def train(sys_argv):
                                          for purpose in ["dev", "test"] if purpose in data_dict[label]}
                                  for label in ["ner", "md"]}
 
-        f_scores, morph_accuracies, _ = eval_with_specific_model(model,
+        f_scores, morph_accuracies, _, test_metrics = eval_with_specific_model(model,
                                                                  epoch_no,
                                                                  datasets_to_be_tested,
                                                                  return_datasets_with_predicted_labels=False)
+
+        metrics_by_type = test_metrics[1]
 
         if model.parameters['active_models'] in [0, 2, 3]:
             if "dev" in f_scores["ner"]:
@@ -150,6 +155,8 @@ def train(sys_argv):
                     print("NER Epoch: %d New best dev score => best_dev, best_test: %lf %lf" % (epoch_no,
                                                                                                        f_scores["ner"]["dev"],
                                                                                                        f_scores["ner"]["test"]))
+                    print("NER Epoch: %d |" % epoch_no + "|".join(["%s: %2.3lf" % (entity_type, m.fscore)
+                                                       for entity_type, m in sorted(metrics_by_type.items(), key=lambda x: x[0])]))
                     last_epoch_with_best_scores = epoch_no
                     best_dev = f_scores["ner"]["dev"]
                     best_test = f_scores["ner"]["test"]
@@ -163,6 +170,9 @@ def train(sys_argv):
                     print("NER Epoch: %d Best dev and accompanying test score, best_dev, best_test: %lf %lf" % (epoch_no,
                                                                                                            best_dev,
                                                                                                            best_test))
+                    print("NER Epoch: %d |" % epoch_no + "|".join(["%s: %2.3lf" % (entity_type, m.fscore)
+                                                        for entity_type, m in
+                                                        sorted(metrics_by_type.items(), key=lambda x: x[0])]))
 
         if model.parameters['active_models'] in [1, 2, 3]:
             if "dev" in morph_accuracies["md"]:

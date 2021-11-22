@@ -1,4 +1,4 @@
-IPython
+jupyter
 numpy==1.*
 virtualenvwrapper
 pymongo==3.*
@@ -8,3 +8,6 @@ pandas
 dynet==2.1
 
 tornado==4.5.3
+# scipy
+# scikit-learn>=0.18
+# scikit-image>=0.12

@@ -334,6 +334,11 @@ def read_args(evaluation=False, args_as_a_list=sys.argv[1:], for_xnlp=False):
         )
 
         optparser.add_option(
+            "--alt_dataset_group", default="none",
+            help="alternative dataset group selector"
+        )
+
+        optparser.add_option(
             "--use_golden_morpho_analysis_in_word_representation", default=False, action="store_true",
             help="use golden morpho analysis when representing words"
         )

@@ -18,6 +18,7 @@ import os
 
 import dynet
 
+from evaluation.conlleval import evaluate as conll_evaluate, report as conll_report, metrics
 from toolkit.joint_ner_and_md_model import MainTaggerModel
 from utils import eval_script, iobes_iob, eval_logs_dir
 from utils.loader import prepare_datasets, extract_mapping_dictionaries_from_model
@@ -70,6 +71,7 @@ def eval_with_specific_model(model,
                                         for purpose in list(datasets_to_be_predicted[label].keys())}
                                 for label in list(datasets_to_be_predicted.keys())}
 
+    test_metrics = None
     # for dataset_label, dataset_as_list in datasets_to_be_predicted:
     for label in list(datasets_to_be_predicted.keys()):
         for purpose in list(datasets_to_be_predicted[label].keys()):
@@ -163,11 +165,13 @@ def eval_with_specific_model(model,
                 # sys.exit(0)
                 # with open(output_path, "r", encoding="utf-8") as output_path_f:
                 # try:
-                from evaluation.conlleval import evaluate as conll_evaluate, report as conll_report
+
                 with open(output_path, "r") as output_path_f, open(scores_path, "w") as scores_path_f:
                     print("Evaluating the %s dataset with conlleval script's Python implementation" % (label + "_" + purpose))
                     counts = conll_evaluate(output_path_f)
                     eval_script_output = conll_report(counts, out=scores_path_f)
+                    if label == "ner" and purpose == "test":
+                        test_metrics = metrics(counts)
                 # print("Evaluating the %s dataset with conlleval script runner" % (label + "_" + purpose))
                 # command_string = "%s %s %s" % (eval_script, output_path, scores_path)
                 # print(command_string)
@@ -209,22 +213,26 @@ def eval_with_specific_model(model,
                 disambiguation_accuracies[label][purpose] = \
                     total_correct_disambs[label][purpose] / float(total_disamb_targets[label][purpose])
 
-    return f_scores, disambiguation_accuracies, datasets_with_predicted_labels
+    return f_scores, disambiguation_accuracies, datasets_with_predicted_labels, test_metrics
 
 
-def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
+def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path, modify_paths_in_opts=True):
 
     model, opts, parameters = initialize_model_with_pretrained_parameters(model_dir_path,
                                                                           model_epoch_dir_path,
-                                                                          models_dir_path)
+                                                                          models_dir_path,
+                                                                          overwrite_mappings=1)
 
     print(opts)
     print(parameters)
 
-    for arg_name in opts.__dict__.keys():
-        if type(opts.__dict__[arg_name]) == str:
-            opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
-                                                                  "/Users/onur/Desktop/projects/research/datasets-to-TRUBA/")
+    if modify_paths_in_opts:
+        for arg_name in opts.__dict__.keys():
+            if type(opts.__dict__[arg_name]) == str:
+                opts.__dict__[arg_name] = opts.__dict__[arg_name].replace("/truba/home/ogungor/projects/research/datasets/joint_ner_dynet-manylanguages/",
+                                                                      "/Users/onur.gungor/Desktop/projects/research/datasets-to-TRUBA/")
+                # if "/Users/onur.gungor/Desktop/projects/research/datasets-to-TRUBA/" in opts.__dict__[arg_name]:
+                #     opts.__dict__[arg_name] += ".short"
 
     print(opts)
     # Prepare the data
@@ -232,12 +240,92 @@ def do_xnlp(models_dir_path, model_dir_path, model_epoch_dir_path):
     # id_to_tag, tag_scheme, test_data, \
     # train_data, train_stats, word_to_id, \
     # yuret_test_data, yuret_train_data
-    data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag = prepare_datasets(model,
-                                                     opts,
-                                                     parameters,
-                                                     for_training=False)
+    data_dict, \
+    id_to_tag, \
+    word_to_id, \
+    stats_dict, \
+    id_to_char, \
+    id_to_morpho_tag = prepare_datasets(model,
+                                        opts,
+                                        parameters,
+                                        for_training=False,
+                                        do_xnlp=True)
 
-    return model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
+    return model, data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag, opts, parameters
+
+
+def test_multi_token_extraction():
+    l = list(extract_multi_token_entities("B-PER I-PER E-PER".split(" ")))
+
+    assert l[0][0] == 0, l
+    assert l[0][1] == 3, l
+    assert l[0][2] == "PER", l
+
+    l = list(extract_multi_token_entities("B-PER E-PER".split(" ")))
+
+    assert l[0][0] == 0, l
+    assert l[0][1] == 2, l
+    assert l[0][2] == "PER", l
+
+    l = list(extract_multi_token_entities("B-PER E-PER O S-LOC O O B-LOC I-LOC E-LOC".split(" ")))
+
+    assert l[0][0] == 0, l
+    assert l[0][1] == 2, l
+    assert l[0][2] == "PER", l
+
+    assert l[1][0] == 3, l
+    assert l[1][1] == 4, l
+    assert l[1][2] == "LOC", l
+
+    assert l[2][0] == 6, l
+    assert l[2][1] == 9, l
+    assert l[2][2] == "LOC", l
+
+    assert len(l) == 0, str(l)
+
+
+def extract_multi_token_entities(tag_sequence):
+
+    cur_entity = [0, 0, ""] # start, end, entity name
+    is_parsing_an_entity = False
+    prev_tag = "O"
+    prev_type = ""
+    for idx, tag in enumerate(tag_sequence):
+        if is_parsing_an_entity:
+            if tag.startswith("I-"):
+                if prev_tag != "I-" and prev_tag != "B-":
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                if prev_type != tag.replace("I-", ""):
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                prev_tag = "I-"
+            elif tag.startswith("E-"):
+                if prev_tag != "I-" and prev_tag != "B-":
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                if prev_type != tag.replace("E-", ""):
+                    raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+                cur_entity[1] = idx + 1
+                yield [e for e in cur_entity]
+                cur_entity = [0, 0, ""]
+                prev_tag = "E-"
+                is_parsing_an_entity = False
+            else:
+                raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+        else:
+            if tag == "O":
+                prev_tag = "O"
+                continue
+            elif tag.startswith("S-"):
+                yield [idx, idx+1, tag.replace("S-", "")]
+                prev_tag = "S-"
+            elif tag.startswith("B-"):
+                cur_entity[0] = idx
+                cur_entity[2] = tag.replace("B-", "")
+                is_parsing_an_entity = True
+                prev_tag = "B-"
+                prev_type = tag.replace("B-", "")
+            else:
+                raise Exception("malformed tag sequence at pos %d " % idx + str(tag_sequence))
+
 
 
 def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_path):
@@ -341,21 +429,22 @@ def predict_tags_given_model_and_input(datasets_to_be_tested,
                                        model,
                                        return_result=False):
 
-    f_scores, morph_accuracies, labeled_sentences = eval_with_specific_model(model,
+    f_scores, morph_accuracies, labeled_sentences, _ = eval_with_specific_model(model,
                                                                              -1,
                                                                              datasets_to_be_tested,
                                                                              return_result)
     return f_scores, morph_accuracies, labeled_sentences
 
 
-def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_path, models_dir_path):
+def initialize_model_with_pretrained_parameters(model_dir_path, model_epoch_dir_path, models_dir_path, overwrite_mappings=0):
     import os
     from utils import read_parameters_from_file
     parameters, opts = read_parameters_from_file(os.path.join(models_dir_path, model_dir_path, "parameters.pkl"),
                                                  os.path.join(models_dir_path, model_dir_path, "opts.pkl"))
     model = MainTaggerModel(models_path=models_dir_path,
                             model_path=model_dir_path,
-                            model_epoch_dir_path=model_epoch_dir_path)
+                            model_epoch_dir_path=model_epoch_dir_path,
+                            overwrite_mappings=overwrite_mappings)
     # Build the model
     model.build(training=False, **parameters)
     model.reload(os.path.join(models_dir_path, model_dir_path, model_epoch_dir_path))
@@ -380,19 +469,19 @@ def evaluate(sys_argv):
     )
 
 
-def xnlp_experiments(sys_argv):
-
-    from utils import read_args
-
-    opts = read_args(args_as_a_list=sys_argv[1:], for_xnlp=True)
-
-    from utils.train import models_path
-
-    model, data_dict, id_to_tag, word_to_id, stats_dict = do_xnlp(
-        models_dir_path=models_path,
-        model_dir_path=opts.model_path,
-        model_epoch_dir_path=opts.model_epoch_path
-    )
+# def xnlp_experiments(sys_argv):
+#
+#     from utils import read_args
+#
+#     opts = read_args(args_as_a_list=sys_argv[1:], for_xnlp=True)
+#
+#     from utils.train import models_path
+#
+#     model, data_dict, id_to_tag, word_to_id, stats_dict = do_xnlp(
+#         models_dir_path=models_path,
+#         model_dir_path=opts.model_path,
+#         model_epoch_dir_path=opts.model_epoch_path
+#     )
 
 
 def predict_from_stdin(sys_argv):

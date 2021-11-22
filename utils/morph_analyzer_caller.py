@@ -2,6 +2,7 @@
 import codecs
 import os
 import subprocess
+import sys
 import tempfile
 
 from utils import tokenizer
@@ -38,7 +39,7 @@ def create_single_word_single_line_format(morph_analyzer_output_for_a_single_sen
             if subline_idx == 0:
                 current_single_line += tokens[0]
                 if conll:
-                    current_single_line += " " + tokens[1] + tokens[2]
+                    current_single_line += " " + "_"
                 current_single_line += " " + tokens[1] + tokens[2]
             else:
                 current_single_line += " " + tokens[1] + tokens[2]

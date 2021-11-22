@@ -131,8 +131,22 @@ def get_data_frame_for_results_of_a_specific_campaign(campaign_name, db_type, ke
                         if str(epoch_id_of_the_best_dev_result) in list(run["info"][x + "_test_f_score"].keys()) else -1
                 print(dict_to_report[result_designation_label + "_to_" + x + "_test"])
 
-        configs.append({key: dict_to_report[key] for key in [x for x in keys_to_report if x in dict_to_report] +
-                        [x for x in list(dict_to_report.keys()) if x not in initial_keys]})
+        for key in run["info"].keys():
+            if key.startswith("NER_TYPE_"):
+                best_dev_result_for_this_run = 0
+                f_scores = run["info"][key]
+                for epoch in sorted([int(k) for k in list(f_scores.keys())]):
+                    epoch_max = max([float(x) for x in f_scores[str(epoch)]])
+                    if epoch_max > best_dev_result_for_this_run:
+                        epoch_id_of_the_best_dev_result = epoch
+                        best_dev_result_for_this_run = epoch_max
+                dict_to_report[key+ "_best"] = best_dev_result_for_this_run
+
+        configs.append({key: dict_to_report[key]
+                        for key in
+                        [x for x in keys_to_report if x in dict_to_report] +
+                        [x for x in list(dict_to_report.keys()) if x not in initial_keys] +
+                        [x for x in list(dict_to_report.keys()) if x.startswith("NER_TYPE")]})
     import pandas
     df = pandas.DataFrame.from_dict(configs)
     print(configs)
@@ -232,9 +246,7 @@ def report(campaign_name="TRUBA-20181010-over-all-languages-03-dim-10-morpho_tag
                                                      "shortcut_connections",
                                                      "lang_name"]).NER_best_test.mean())
 
-        df_lang_name.to_csv(f"./reports/report-{campaign_name}-{lang_name}.csv")
-
-
+        df_lang_name.to_csv("./reports/report-%s-%s.csv" % (campaign_name, lang_name))
 
 
 if __name__ == "__main__":

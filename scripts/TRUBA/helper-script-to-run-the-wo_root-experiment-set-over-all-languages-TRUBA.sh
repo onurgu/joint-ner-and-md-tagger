@@ -19,7 +19,9 @@ preamble="cd ${ner_tagger_root} && \
           source ${environment_variables_path} && \
           python control_experiments.py ${sacred_args} with debug=${debug} "
 
-n_trials=5
+n_trials=${6:-5}
+
+alt_dataset_group=${7:-none}
 
 dim=${2:-10}
 
@@ -47,6 +49,7 @@ for trial in `seq 1 ${n_trials}`; do
                 word_dim=$dim \
                 word_lstm_dim=$dim \
                 batch_size=$batch_size \
+                alt_dataset_group=$alt_dataset_group \
                 lr_method=sgd-learning_rate_float@0.01 "
                 # changed the learning rate to 0.01 from 0.100
 

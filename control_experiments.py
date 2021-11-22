@@ -23,6 +23,7 @@ def my_config():
     experiment_name = "default_experiment_name"
 
     lang_name = "turkish"
+    alt_dataset_group = "none"
 
     datasets_root = "/home/onur/projects/research/turkish-ner/datasets"
 
@@ -95,6 +96,7 @@ def my_main():
 @ex.capture
 def train_a_single_configuration(
         lang_name,
+        alt_dataset_group,
         datasets_root,
         crf,
         lr_method,
@@ -156,6 +158,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
             embeddings_part = ""
 
     always_constant_part = "--lang_name %s --file_format %s " \
+                           "--alt_dataset_group %s " \
                            "--ner_train_file %s/%s/%s " \
                            "%s" \
                            "--ner_test_file %s/%s/%s " \
@@ -167,6 +170,7 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
                            "--tag_scheme iobes " \
                            "--starting-epoch-no %d " \
                            "--maximum-epochs %d " % (lang_name, file_format,
+                                                     alt_dataset_group,
                                                      datasets_root, lang_name, ner_train_file,
                                                      ("--ner_dev_file %s/%s/%s " % (datasets_root, lang_name, ner_dev_file)) if ner_dev_file else "",
                                                      datasets_root, lang_name, ner_test_file,
@@ -264,6 +268,8 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
         :return:
         """
         epoch_str = str(epoch)
+        if label not in _run.info:
+            _run.info[label] = dict()
         if epoch_str in _run.info[label]:
             _run.info[label][epoch_str].append(value)
         else:
@@ -284,6 +290,14 @@ irect 1 --overwrite-mappings 1 --batch-size 1 --morpho_tag_dim 100 --integration
 
                 record_metric(epoch, "%s_dev_f_score" % task_name, best_dev)
                 record_metric(epoch, "%s_test_f_score" % task_name, best_test)
+
+        m = re.match("^NER Epoch: (\d+) \|(.*)$", line)
+        if m:
+            epoch = int(m.group(1))
+            right_part = m.group(2)
+            for entity_type, f_score in dict([pair.split(": ") for pair in right_part.split("|")]).items():
+
+                record_metric(epoch, "NER_TYPE_%s_f_score" % entity_type, f_score)
 
         m = re.match("^.*Epoch (\d+) Avg. loss over training set: (.+)$", line)
         if m:

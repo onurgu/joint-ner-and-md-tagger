@@ -748,7 +748,7 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
     return dictionary, word_to_id, id_to_word
 
 
-def _prepare_datasets(opts, parameters, for_training=True):
+def _prepare_datasets(opts, parameters, for_training=True, do_xnlp=False, alt_dataset_group="none"):
 
     opts_dict = opts.__dict__
 
@@ -761,19 +761,24 @@ def _prepare_datasets(opts, parameters, for_training=True):
 
     training_sets = {"ner": {}, "md": {}}
 
+    if alt_dataset_group == "none":
+        alt_dataset_group = ""
+    else:
+        alt_dataset_group = "." + alt_dataset_group
+
     # Load sentences
-    if for_training:
+    if for_training or do_xnlp:
         for label in list(training_sets.keys()):
             _train_sentences, max_sentence_lengths['train'], max_word_lengths['train'] = \
-                load_sentences(opts_dict[label+"_train_file"], zeros, parameters['file_format'])
+                load_sentences(opts_dict[label+"_train_file"]+alt_dataset_group, zeros, parameters['file_format'])
             update_tag_scheme(_train_sentences, tag_scheme, file_format=parameters['file_format'])
             training_sets[label]['train'] = _train_sentences
 
     for label in list(training_sets.keys()):
         for purpose in ["dev", "test"]:
-            if os.path.exists(opts_dict[label+"_"+purpose+"_file"]):
+            if os.path.exists(opts_dict[label+"_"+purpose+"_file"]+alt_dataset_group):
                 _dev_sentences, max_sentence_lengths[purpose], max_word_lengths[purpose] = \
-                    load_sentences(opts_dict[label+"_"+purpose+"_file"], zeros, parameters['file_format'])
+                    load_sentences(opts_dict[label+"_"+purpose+"_file"]+alt_dataset_group, zeros, parameters['file_format'])
                 update_tag_scheme(_dev_sentences, tag_scheme, file_format=parameters['file_format'])
                 training_sets[label][purpose] = _dev_sentences
 
@@ -839,7 +844,7 @@ def create_mappings(training_sets, parameters, file_format="conll",
            morpho_tag_to_id, id_to_morpho_tag
 
 
-def prepare_datasets(model, opts, parameters, for_training=True):
+def prepare_datasets(model, opts, parameters, for_training=True, do_xnlp=False):
     """
 
     :type model: MainTaggerModel
@@ -852,13 +857,21 @@ def prepare_datasets(model, opts, parameters, for_training=True):
 
     ud_morpho_tag_separator = "|"
 
+    if "alt_dataset_group" in opts.__dict__:
+        alt_dataset_group = opts.alt_dataset_group
+    else:
+        alt_dataset_group = "none"
+
     training_sets, max_sentence_lengths, max_word_lengths = \
-        _prepare_datasets(opts, parameters, for_training=for_training)
+        _prepare_datasets(opts, parameters,
+                          for_training=for_training,
+                          do_xnlp=do_xnlp,
+                          alt_dataset_group=alt_dataset_group)
 
     print(training_sets.keys())
     print(training_sets["ner"].keys())
 
-    if not for_training:
+    if not for_training or do_xnlp:
         model.reload_mappings()
 
         char_to_id, id_to_char, id_to_morpho_tag, id_to_tag, id_to_word, \
@@ -883,7 +896,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     stats_dict = {"ner": {}, "md": {}}
 
     # Index data
-    if for_training:
+    if for_training or do_xnlp:
         for label in ["ner", "md"]:
             for purpose in ["train", "dev"]:
                 if label in training_sets and purpose in training_sets[label]:
@@ -904,7 +917,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
                 file_format=parameters['file_format'],
                 morpho_tag_separator=("+" if model.parameters['lang_name'] == "turkish" else ud_morpho_tag_separator))
 
-    if for_training:
+    if for_training or do_xnlp:
         for label in ["ner", "md"]:
             purposes = ["train", "dev", "test"]
             n_values = sum([1 for purpose in purposes if purpose in stats_dict[label]])
@@ -967,7 +980,7 @@ def prepare_datasets(model, opts, parameters, for_training=True):
     print("Max. sentence lengths: %s" % max_sentence_lengths)
     print("Max. char lengths: %s" % max_word_lengths)
 
-    if for_training:
+    if for_training and not do_xnlp:
         triple_list = []
         for purpose in ["train", "dev", "test"]:
             triple_list += [[purpose, stats_dict["ner"][purpose], unique_words_dict["ner"][purpose]]] if purpose in stats_dict["ner"] else []
