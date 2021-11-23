@@ -94,6 +94,8 @@ def eval_with_specific_model(model,
             print("dataset_label: %s" % (label+"_"+purpose))
             print(("n_batches: %d" % n_batches))
 
+            debug = False
+
             for batch_idx in range(n_batches):
                 # print("batch_idx: %d" % batch_idx)
                 sys.stdout.write(". ")
@@ -109,8 +111,9 @@ def eval_with_specific_model(model,
 
                     if active_models in [2, 3] and label in "ner md".split(" "):
                         selected_morph_analyzes, decoded_tags = model.predict(sentence)
-                        print("decoded_tags: ", decoded_tags)
-                        print("selected_morph_analyzes: ", selected_morph_analyzes)
+                        if debug:
+                            print("decoded_tags: ", decoded_tags)
+                            print("selected_morph_analyzes: ", selected_morph_analyzes)
                     elif active_models in [1] and label == "md":
                         selected_morph_analyzes, _ = model.predict(sentence)
                     elif active_models in [0] and label == "ner":
@@ -130,7 +133,8 @@ def eval_with_specific_model(model,
                             count[y_real, y_pred] += 1
                         predictions.append("")
 
-                    print("predictions: ", predictions)
+                    if debug:
+                        print("predictions: ", predictions)
 
                     if active_models in [1, 2, 3] and label == "md":
                         n_correct_morph_disambs = \
@@ -344,13 +348,9 @@ def evaluate_model_dir_path(models_dir_path, model_dir_path, model_epoch_dir_pat
                                                          parameters,
                                                          for_training=False)
 
-    print("dev_data: ", dev_data)
-    print("test_data: ", test_data)
+    # print("data_dict: ", data_dict)
 
-    datasets_to_be_tested = [("dev", dev_data),
-                             ("test", test_data)]
-
-    f_scores, morph_accuracies, _ = predict_tags_given_model_and_input(datasets_to_be_tested,
+    f_scores, morph_accuracies, _ = predict_tags_given_model_and_input(data_dict,
                                                                        model,
                                                                        return_result=False)
 

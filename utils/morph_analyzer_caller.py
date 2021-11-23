@@ -14,6 +14,10 @@ analyzer_command = {'turkish': ["./bin.linux64/lookup",
                                 "tfeatures.scr"]}
 
 
+def turkish_lower(s):
+    return s.replace("IİŞÜĞÖÇ", "ıişüğöç")
+
+
 def create_single_word_single_line_format(morph_analyzer_output_for_a_single_sentence,
                                           conll=False, for_prediction=False):
     """
@@ -40,9 +44,9 @@ def create_single_word_single_line_format(morph_analyzer_output_for_a_single_sen
                 current_single_line += tokens[0]
                 if conll:
                     current_single_line += " " + "_"
-                current_single_line += " " + tokens[1] + tokens[2]
+                current_single_line += " " + turkish_lower(tokens[1]).lower() + tokens[2]
             else:
-                current_single_line += " " + tokens[1] + tokens[2]
+                current_single_line += " " + turkish_lower(tokens[1]).lower() + tokens[2]
             subline_idx += 1
         else:
             if conll and for_prediction and len(current_single_line) > 0:

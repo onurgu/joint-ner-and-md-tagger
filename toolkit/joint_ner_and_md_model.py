@@ -636,7 +636,7 @@ class MainTaggerModel(object):
             #                                                   sentence['tag_ids'])
             observations = [dynet.concatenate([obs, dynet.inputVector([-1e10, -1e10])], d=0) for obs in
                             tag_scores]
-            print("\n".join([" ".join([str(xx) for xx in x.value()]) for x in observations]))
+            # print("\n".join([" ".join([str(xx) for xx in x.value()]) for x in observations]))
             decoded_tags, _ = self.crf_module.viterbi_decoding(observations)
         else:
             decoded_tags = []

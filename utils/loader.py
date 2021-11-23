@@ -37,7 +37,7 @@ def load_sentences(input_file_path_or_list, zeros, file_format="conll"):
     if file_format == "conllu":
         sep = '\t'
     elif file_format == "conll":
-        sep = None
+        sep = ' '
 
     for line in input_f:
         if file_format == "conllu" and line.startswith("#"):
@@ -1007,7 +1007,8 @@ def prepare_datasets(model, opts, parameters, for_training=True, do_xnlp=False):
         # return dev_data, {}, id_to_tag, parameters['t_s'], test_data, \
         #        train_data, train_stats, word_to_id, yuret_test_data, yuret_train_data
     else:
-        return dev_data, {}, id_to_tag, parameters['t_s'], test_data, [], {}, word_to_id, yuret_test_data, []
+        # return dev_data, {}, id_to_tag, parameters['t_s'], test_data, [], {}, word_to_id, yuret_test_data, []
+        return data_dict, id_to_tag, word_to_id, stats_dict, id_to_char, id_to_morpho_tag
 
 
 def extract_mapping_dictionaries_from_model(model):
