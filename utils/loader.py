@@ -315,8 +315,12 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
                             tmp_morpho_tag = morpho_tag_separator.join([tmp_morpho_tag, "*UNKNOWN*"])
                     print(word)
                     print(tmp_morpho_tag)
-                    morpho_tags += [list(map(fix_BLANK, [tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[-1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]))]
+                    if tmp_morpho_tag == "_":
+                        morpho_tags = []
+                    else:
+                        morpho_tags += [list(map(fix_BLANK, [tmp_morpho_tag.split(morpho_tag_separator)[1].split("~")[-1]] + tmp_morpho_tag.split(morpho_tag_separator)[2:]))]
         elif morpho_tag_type.startswith('with_root'):
+            print("word: ", word)
             if morpho_tag_column_index == 1:
                 if file_format == "conll":
                     tmp_morpho_tag = word[morpho_tag_column_index]
@@ -327,6 +331,7 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
                 root = [word[1]] # In Czech dataset, the lemma is given in the first column
             tmp = []
             tmp += root
+            print("tmp: ", tmp)
             if morpho_tag_type == 'with_root_after_DB' and morpho_tag_column_index == 1:
                 if file_format == "conll":
                     tmp_morpho_tag = word[1]
@@ -347,6 +352,7 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
                         tmp_morpho_tag = word[1]
                     elif file_format == "conllu":
                         tmp_morpho_tag = extract_correct_analysis_from_conllu(word)
+                    print("tmp_morpho_tag: ", tmp_morpho_tag)
                     morpho_tags += [tmp_morpho_tag.split(morpho_tag_separator)] # I removed the 'tmp +' because it just repeated the first element which is root
     return morpho_tags
 
