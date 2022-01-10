@@ -27,7 +27,7 @@ class DisambiguationHandler(tornado.web.RequestHandler):
             DisambiguationHandler.model = model
 
     @staticmethod
-    def disambiguate_line(line):
+    def disambiguate_line(line, show_gold_labels):
 
         from utils.evaluation import predict_sentences_given_model
 
@@ -35,10 +35,19 @@ class DisambiguationHandler(tornado.web.RequestHandler):
 
         labeled_sentences, dataset_file_string = predict_sentences_given_model(line, DisambiguationHandler.model)
 
+        tagger_output_dict = {}
+        for i, line in enumerate(labeled_sentences['ner']['test']):
+            if len(line) > 0:
+                tokens = line.split(" ")
+                if not show_gold_labels:
+                    # remove the second token, which is the tag
+                    tagger_output_dict[i] = [tokens[0], tokens[2]]
+                else:
+                    tagger_output_dict[i] = tokens
 
         return {
             'dataset_file_string': {i: line.split(" ") for i, line in enumerate(dataset_file_string.split("\n")) if len(line) > 0},
-            'tagger_output': {i: line.split(" ") for i, line in enumerate(labeled_sentences['ner']['test']) if len(line) > 0}
+            'tagger_output': tagger_output_dict
         }
             # 'disambiguator_output': {i: {'surface_form': surface_form, 'analysis': analysis} for i, (surface_form, analysis) in enumerate(prediction_lines_raw)}}
 
@@ -48,11 +57,12 @@ class DisambiguationHandler(tornado.web.RequestHandler):
 
         self.add_header("Access-Control-Allow-Origin", "*")
         line = self.get_argument("textarea", default="Dünyaya hoş geldiniz.")
+        show_gold_labels = int(self.get_argument("show_gold_labels", default="0")) == 1
         # print type(line)
         print((line.encode("utf8")))
 
         line = line.strip()
-        self.write(DisambiguationHandler.disambiguate_line(line))
+        self.write(DisambiguationHandler.disambiguate_line(line, show_gold_labels))
         self.write("\n")
         self.finish()
 
