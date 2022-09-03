@@ -363,7 +363,10 @@ def extract_morpho_tags_from_one_sentence_ordered(morpho_tag_type, morpho_tags, 
 def contains_golden_label(word, type):
     if len(word) == 10:
         misc_dict = load_MISC_column_contents(word[9])
-        return type in list(misc_dict.keys())
+        if misc_dict:
+            return type in list(misc_dict.keys())
+        else:
+            return False
     else:
         return False
 
