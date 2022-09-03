@@ -179,7 +179,10 @@ def load_MISC_column_contents(column):
     #         field_name = tokens[0]
     #         field_content = [item for item in tokens[1].split("!")]
     #         fields_dict[field_name] = field_content
-    fields_dict = json.loads(column)
+    try:
+        fields_dict = json.loads(column)
+    except json.decoder.JSONDecodeError as e:
+        return None
     return fields_dict
 
 def compile_MISC_column_contents(field_contents_dict):
