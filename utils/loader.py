@@ -490,6 +490,12 @@ def prepare_dataset(sentences,
         elif file_format == "conllu":
             surface_form_index = 1
 
+        punctuation_marks = "` = - , ; : / . \" ( ) +".split(" ")
+        for w in sentence:
+            if "Punc" in w[morpho_tag_column_index] and w[surface_form_index] not in punctuation_marks:
+                w[morpho_tag_column_index] = ".+Punc"
+                w[surface_form_index] = "."
+
         surface_forms = [w[surface_form_index] for w in sentence]
         #####
 
