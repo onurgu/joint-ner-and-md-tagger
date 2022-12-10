@@ -492,7 +492,7 @@ def prepare_dataset(sentences,
 
         punctuation_marks = "` = - , ; : / . \" ( ) +".split(" ")
         for w in sentence:
-            if "Punc" in w[morpho_tag_column_index] and w[surface_form_index] not in punctuation_marks:
+            if "Punc" in w[2] and w[surface_form_index] not in punctuation_marks:
                 w[morpho_tag_column_index] = ".+Punc"
                 w[surface_form_index] = "."
 
