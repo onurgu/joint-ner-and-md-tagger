@@ -128,7 +128,11 @@ def eval_with_specific_model(model,
 
                         for i, (y_pred, y_real) in enumerate(
                                 zip(decoded_tags, sentence['tag_ids'])):
-                            new_line = " ".join([sentence['str_words'][i]] + [r_tags[i], p_tags[i]])
+                            str_word_to_output = sentence['str_words'][i]
+                            for idx_that_was_changed_due_to_the_bug, _, surface_form_that_was_changed in sentence['bugfix_related_change_indices']:
+                                if i == idx_that_was_changed_due_to_the_bug:
+                                    str_word_to_output = surface_form_that_was_changed 
+                            new_line = " ".join([str_word_to_output] + [r_tags[i], p_tags[i]])
                             predictions.append(new_line)
                             count[y_real, y_pred] += 1
                         predictions.append("")

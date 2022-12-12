@@ -491,8 +491,10 @@ def prepare_dataset(sentences,
             surface_form_index = 1
 
         punctuation_marks = "` = - , ; : / . \" ( ) +".split(" ")
-        for w in sentence:
+        bugfix_related_change_indices = []
+        for idx, w in enumerate(sentence):
             if "Punc" in w[2] and w[surface_form_index] not in punctuation_marks:
+                bugfix_related_change_indices.append((idx, w[morpho_tag_column_index], w[surface_form_index]))
                 w[morpho_tag_column_index] = ".+Punc"
                 w[surface_form_index] = "."
 
@@ -670,7 +672,8 @@ def prepare_dataset(sentences,
 
             'char_lengths': [len(char) for char in chars],
             'sentence_lengths': len(sentence),
-            'max_word_length_in_this_sample': max([len(x) for x in chars])
+            'max_word_length_in_this_sample': max([len(x) for x in chars]),
+            'bugfix_related_change_indices': bugfix_related_change_indices
         }
 
         if contains_golden_label(sentence[0], "NER_TAG"):
