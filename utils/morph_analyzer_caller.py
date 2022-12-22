@@ -74,7 +74,7 @@ def get_morph_analyzes(line, lang="turkish"):
     else:
         tokens = tokenizer.tokenize(line.decode("utf8"))
     fd, f_path = tempfile.mkstemp()
-    with codecs.open(f_path, "w", encoding="iso-8859-9", mode="ignore") as f:
+    with codecs.open(f_path, "w", encoding="iso-8859-9", errors="ignore") as f:
         for token in tokens:
             f.write(token + "\n")
     os.close(fd)
